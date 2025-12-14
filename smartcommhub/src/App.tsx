@@ -1,35 +1,25 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+// src/App.tsx
+import { useRoutes } from 'react-router-dom';
+// 引入上面写的路由规则
+import { constantRoutes } from './router/index';
 
 function App() {
-  const [count, setCount] = useState(0)
+  // 根据URL自动匹配对应的页面组件
+  const routes = useRoutes(constantRoutes);
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
+    <div className="App">
+      {/* 这里会显示Home/About等页面 */}
+      {routes}
+      {/* 可选：加个简单的导航栏，方便切换页面 */}
+      <div style={{ padding: '20px', background: '#f5f5f5' }}>
+        <a href="/" style={{ marginRight: '20px' }}>
+          首页
         </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+        <a href="/about">关于页</a>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    </div>
+  );
 }
 
-export default App
+export default App;

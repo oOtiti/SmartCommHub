@@ -1,6 +1,6 @@
 // @see: https://stylelint.io
 
-module.exports = {
+export default {
   root: true,
 
   /* 继承某些已有的规则 */

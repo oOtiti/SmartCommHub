@@ -1,5 +1,117 @@
+/* base.css - 网页样式重置与基础配置 */
+
+/* 1. 清除所有元素默认内外边距，统一盒模型 */
 * {
+  /* 盒模型：width/height 包含 padding 和 border，避免布局计算麻烦 */
   box-sizing: border-box;
   padding: 0;
   margin: 0;
+}
+
+/* 2. 清除列表默认样式（ul/ol） */
+ul,
+ol {
+  list-style: none; /* 去掉默认圆点/数字 */
+}
+
+/* 3. 清除超链接默认样式 */
+a {
+  color: inherit; /* 继承父元素颜色，不再默认蓝色 */
+  text-decoration: none; /* 去掉下划线 */
+  outline: none; /* 去掉点击时的默认外边框 */
+}
+
+/* 4. 清除图片默认样式 */
+img {
+  max-width: 100%;
+  height: auto; /* 保持图片宽高比 */
+  vertical-align: middle;
+  border: none; /* 清除老浏览器中图片默认边框 */
+}
+
+/* 5. 清除表单元素默认样式 */
+input,
+button,
+select,
+textarea {
+  /* 清除默认内边距和轮廓 */
+  padding: 0;
+
+  /* 允许自定义表单样式 */
+
+  /* 兼容 Safari/Chrome */
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  appearance: none; /* 兼容 Firefox */
+  outline: none;
+
+  /* 清除默认边框和背景 */
+
+  background: none;
+  border: none;
+
+  /* 继承父元素字体样式 */
+}
+
+/* 6. 清除按钮默认样式 */
+button {
+  cursor: pointer; /* 鼠标悬浮显示指针 */
+}
+
+/* 7. 清除表格默认样式 */
+table {
+  width: 100%; /* 表格默认占满容器宽度 */
+  border-spacing: 0; /* 清除单元格间距 */
+  border-collapse: collapse; /* 合并边框 */
+}
+
+/* 8. 统一字体基础样式 */
+body {
+  /* 设置基础字体（优先系统无衬线字体，兼容性更好） */
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-size: 16px; /* 基础字体大小 */
+  line-height: 1.5; /* 行高，提升可读性 */
+  color: #333; /* 基础文本颜色 */
+  background-color: #fff; /* 基础背景色 */
+  -webkit-font-smoothing: antialiased; /* 字体抗锯齿，更清晰 */
+  -moz-osx-font-smoothing: grayscale; /* 兼容 Firefox */
+}
+
+/* 9. 清除标题标签（h1-h6）默认样式 */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-size: inherit; /* 继承父元素字体大小 */
+  font-weight: normal; /* 清除默认加粗 */
+}
+
+/* 10. 清除块级元素默认对齐方式 */
+blockquote,
+q {
+  quotes: none; /* 清除引用默认引号 */
+}
+
+blockquote::before,
+blockquote::after,
+q::before,
+q::after {
+  content: '';
+  content: none;
+}
+
+/* 11. 清除 hr 默认样式 */
+hr {
+  height: 1px; /* 统一水平线高度 */
+  background-color: #eee; /* 默认水平线颜色 */
+  border: none;
+}
+
+::selection {
+  color: #fff;
+  background-color: #007bff;
 }

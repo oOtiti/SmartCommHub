@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint . --fix",
+    "lint": "npm run lint:eslint && npm run lint:prettier && npm run lint:stylelint",
+    "lint:eslint": "eslint . --fix",
     "preview": "vite preview",
-    "lint:prettier": "prettier --write --loglevel warn \"src/**/*.{js,ts,json,tsx,css,less,scss,html,md}\"",
-    "lint:stylelint": "stylelint --fix \"**/*.{less,postcss,css,scss}\" --cache --cache-location node_modules/.cache/stylelint/"
+    "lint:prettier": "prettier --write --log-level warn \"src/**/*.{js,ts,json,tsx,css,less,scss,html,md}\"",
+    "lint:stylelint": "stylelint src/**/*.{less,postcss,css,scss} --fix --cache --cache-location node_modules/.cache/stylelint/"
   },
   "dependencies": {
     "axios": "^1.13.2",
@@ -33,17 +34,22 @@
     "eslint-plugin-react-refresh": "^0.4.24",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "globals": "^16.5.0",
+    "postcss": "^8.5.6",
     "postcss-less": "^6.0.0",
+    "postcss-scss": "^4.0.9",
     "prettier": "^3.7.4",
     "stylelint": "^16.26.1",
+    "stylelint-config-css-modules": "^4.5.1",
     "stylelint-config-recess-order": "^7.4.0",
     "stylelint-config-standard": "^39.0.1",
     "stylelint-less": "^3.0.1",
+    "stylelint-order": "^7.0.0",
     "stylelint-prettier": "^5.0.3",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.49.0",
     "unocss": "^66.5.10",
-    "vite": "npm:rolldown-vite@7.2.5"
+    "vite": "npm:rolldown-vite@7.2.5",
+    "vite-plugin-stylelint": "^6.0.2"
   },
   "overrides": {
     "vite": "npm:rolldown-vite@7.2.5"

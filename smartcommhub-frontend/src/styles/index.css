@@ -4,8 +4,8 @@
 * {
   /* 盒模型：width/height 包含 padding 和 border，避免布局计算麻烦 */
   box-sizing: border-box;
-  padding: 0;
   margin: 0;
+  padding: 0;
 }
 
 /* 2. 清除列表默认样式（ul/ol） */

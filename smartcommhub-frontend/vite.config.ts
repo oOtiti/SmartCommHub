@@ -10,7 +10,7 @@ export default defineConfig({
     stylelintPlugin({
       fix: true, // 关键：开启自动修复
       include: ['src/**/*.{css,scss}'], // 只处理 CSS/SCSS（含 CSS Modules）
-      exclude: ['node_modules/**', 'uno.config.{js,ts}'], // 排除 UnoCSS 相关
+      exclude: ['node_modules/**', 'uno.config.{js,ts}', 'src/assets/iconfont/**'], // 排除 UnoCSS 相关
       // 开发环境实时校验（可选）
       lintOnStart: true,
       emitError: true,

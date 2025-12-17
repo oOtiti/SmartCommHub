@@ -54,5 +54,5 @@ export default {
   overrides: [
     { files: ["**/*.{css,scss,less}"], customSyntax: "postcss-scss" }
   ],
-  ignoreFiles: ["node_modules/**/*", "dist/**/*", "uno.config.{js,ts}", "**/*.tsx", "**/*.d.ts"]
+  ignoreFiles: ["node_modules/**/*", "dist/**/*", "uno.config.{js,ts}", "**/*.tsx", "**/*.d.ts","src/assets/iconfont/**/*"]
 };

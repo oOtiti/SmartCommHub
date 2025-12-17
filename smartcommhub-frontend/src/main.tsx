@@ -3,12 +3,12 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import 'virtual:uno.css';
 import './styles/index.css';
-import Test from './views/Test';
+import Home from './views/Home';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <Test />
+      <Home />
     </BrowserRouter>
   </StrictMode>
 );

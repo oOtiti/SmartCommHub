@@ -8,5 +8,7 @@
 - CSS ：[UnoCSS](https://unocss.nodejs.cn/)  
 - 代码规范 ：[EditorConfig](https://editorconfig.org/) + [Prettier](https://prettier.io/) + [ESLint](https://eslint.org/) + [Stylelint](https://stylelint.io/)  
 
-
+## 后端技术栈：
+- 编程语言 ：[python]
+- 后端框架 ：[FastAPI]
 

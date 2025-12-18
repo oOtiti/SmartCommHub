@@ -1,0 +1,52 @@
+#环境变量配置文件
+.env
+
+#日志文件
+*.log
+smartcommhub-backend/logs/
+
+# 容器
+.docker/
+docker-data/
+*.pid
+
+
+# 暂记，如果未来有的话
+.ipynb_checkpoints/
+tmp/
+temp/
+
+# 缓存，构建，环境，以及测试次生结果都不上传
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+smartcommhub-frontend/node_modules/
+smartcommhub-frontend/dist/
+smartcommhub-frontend/build/
+smartcommhub-frontend/.vite/
+.wheels/
+.venv/
+venv/
+env/
+ENV/
+.python-version
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+.cache/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.vscode/*

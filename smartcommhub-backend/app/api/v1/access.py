@@ -1,0 +1,37 @@
+from typing import Optional
+from fastapi import APIRouter, Depends, Query, status
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from app.core.database import get_db
+from app.api.deps import get_current_user
+from app.services.access_record_service import access_record_service
+
+router = APIRouter()
+
+
+class AccessRecordCreateReq(BaseModel):
+    elderly_id: int
+    access_type: str
+    record_time: str
+    gate_location: str
+    is_abnormal: str
+
+
+@router.post("/", status_code=status.HTTP_201_CREATED)
+def create_access_record(req: AccessRecordCreateReq, db: Session = Depends(get_db), current=Depends(get_current_user)):
+    return access_record_service.create(db, getattr(current, "id", None), **req.model_deepcopy())
+
+
+@router.get("/")
+def list_access_records(
+    elderly_id: int = Query(...),
+    start_time: Optional[str] = Query(None),
+    end_time: Optional[str] = Query(None),
+    abnormal: Optional[str] = Query(None),
+    offset: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current=Depends(get_current_user),
+):
+    items = access_record_service.list_by_filters(db, elderly_id, start_time, end_time, abnormal, offset, limit)
+    return {"total": len(items), "offset": offset, "limit": limit, "items": items}

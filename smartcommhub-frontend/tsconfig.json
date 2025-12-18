@@ -1,4 +1,10 @@
 {
   "files": [],
-  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }]
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }],
+    "compilerOptions": {
+    "target": "ES2020",       // 之前大概率已配
+    "lib": ["ES2020", "DOM"], // 必须包含 DOM（React 依赖）
+    "skipLibCheck": true,     // 避免检查 antd 的类型文件（提速）
+    "module": "ESNext"        // 适配 Vite 模块化
+  }
 }

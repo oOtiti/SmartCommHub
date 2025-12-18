@@ -4,7 +4,7 @@ import { BrowserRouter } from 'react-router-dom';
 import 'virtual:uno.css';
 import './styles/index.css';
 import Home from './views/Home';
-
+import './assets/iconfont/iconfont.css';
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>

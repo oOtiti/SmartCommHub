@@ -5,10 +5,10 @@
 *.log
 smartcommhub-backend/logs/
 
-# 容器
-.docker/
-docker-data/
-*.pid
+
+#测试文件
+smartcommhub-backend/tests/
+
 
 
 # 暂记，如果未来有的话
@@ -20,6 +20,7 @@ temp/
 __pycache__/
 *.py[cod]
 *.pyo
+*.pyc
 *.pyd
 *.so
 *.egg-info/

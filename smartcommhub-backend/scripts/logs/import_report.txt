@@ -1,0 +1,10 @@
+elderly: 5616 kB
+family_member: 3800 kB
+provider: 104 kB
+service_item: 392 kB
+service_order: 41 MB
+health_record: 86 MB
+community_notice: 128 kB
+sys_usr_account: 5576 kB
+access_record: 8712 kB
+encrypted_columns_count: N/A

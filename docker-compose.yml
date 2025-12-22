@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./smartcommhub-backend
+      dockerfile: Dockerfile
+
+    container_name: smartcommhub-backend
+    env_file:
+      - ./smartcommhub-backend/.env
+    ports:
+      - "18000:18000"
+    
+    restart: always
+
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:18000/api/healthz"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 30s

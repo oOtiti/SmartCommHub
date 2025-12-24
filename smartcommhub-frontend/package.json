@@ -13,7 +13,7 @@
     "lint:stylelint": "stylelint src/**/*.{less,postcss,css,scss} --fix --cache --cache-location node_modules/.cache/stylelint/"
   },
   "dependencies": {
-    "antd": "^6.1.1",
+    "antd": "^6.1.2",
     "axios": "^1.13.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

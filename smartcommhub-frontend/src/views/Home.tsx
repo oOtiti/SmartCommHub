@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import userAvatar from '../assets/Photo/cat.jpg';
 import { useAuthStore } from '../store/auth';
+import { api } from '../api/client';
 
 const Nav = () => {
   const [showHeader, setShowHeader] = useState(true);
@@ -72,10 +73,14 @@ const Home = () => {
   const logoutApi = useAuthStore((s) => s.logout);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
+  const [isForgot, setIsForgot] = useState(false);
   const [loginForm] = Form.useForm();
   const [registerForm] = Form.useForm();
+  const [forgotForm] = Form.useForm();
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
+
+  // 新增：注册表单中的手机号字段（已在上方声明，无需重复）
 
   // ========== 新增：页面加载时读取登录状态（核心修复） ==========
   useEffect(() => {
@@ -104,7 +109,6 @@ const Home = () => {
     };
   }, []);
 
-  // 登录逻辑（新增：保存状态到localStorage）
   const handleLogin = async () => {
     try {
       const values = await loginForm.validateFields();
@@ -135,7 +139,7 @@ const Home = () => {
         message.info('服务商账号需由管理员创建，请联系管理员');
         return;
       }
-      const ok = await registerApi(values.username, values.password, 2);
+      const ok = await registerApi(values.username, values.password, 2, values.phone);
       if (ok) {
         message.success('注册成功！请登录');
         setIsLogin(true);
@@ -167,7 +171,7 @@ const Home = () => {
               onClick={() => {
                 navigate('/');
               }}
-              className="flex "
+              className="flex"
             >
               <img src={icon} alt="LOGO" className="h-[60px] w-auto mt-[15px]" />
               <h1 className="w-[245px] font-extrabold text-2xl h-[60px] leading-[60px] text-white mt-[15px]">
@@ -264,19 +268,21 @@ const Home = () => {
       </header>
 
       <Modal
-        title={isLogin ? '用户登录' : '用户注册'}
+        title={isForgot ? '找回密码' : isLogin ? '用户登录' : '用户注册'}
         open={showAuthModal}
         onCancel={() => {
           setShowAuthModal(false);
           loginForm.resetFields();
           registerForm.resetFields();
+          forgotForm.resetFields();
           setIsLogin(true);
+          setIsForgot(false);
         }}
         footer={null}
         width={400}
         centered
       >
-        {isLogin && (
+        {isLogin && !isForgot && (
           <Form form={loginForm} layout="vertical" onFinish={handleLogin}>
             <Form.Item
               name="username"
@@ -313,10 +319,22 @@ const Home = () => {
                 立即注册
               </span>
             </div>
+            <div className="text-center text-gray-600 mt-2">
+              忘记密码？
+              <span
+                className="text-[#1E90FF] cursor-pointer"
+                onClick={() => {
+                  setIsForgot(true);
+                  setIsLogin(false);
+                }}
+              >
+                找回密码
+              </span>
+            </div>
           </Form>
         )}
 
-        {!isLogin && (
+        {!isLogin && !isForgot && (
           <Form form={registerForm} layout="vertical" onFinish={handleRegister}>
             <Form.Item
               name="username"
@@ -373,6 +391,79 @@ const Home = () => {
               已有账号？
               <span className="text-[#1E90FF] cursor-pointer" onClick={() => setIsLogin(true)}>
                 立即登录
+              </span>
+            </div>
+          </Form>
+        )}
+
+        {isForgot && (
+          <Form
+            form={forgotForm}
+            layout="vertical"
+            onFinish={async () => {
+              try {
+                const v = await forgotForm.validateFields();
+                if (!v.phone || !v.newPwd || !v.confirmPwd) return;
+                if (v.newPwd !== v.confirmPwd) {
+                  message.error('两次密码不一致');
+                  return;
+                }
+                // 演示版：验证码任意值视为通过
+                await api.post('/auth/forgot/reset', {
+                  phone: v.phone,
+                  code: v.code || '000000',
+                  new_password: v.newPwd,
+                });
+                message.success('密码已重置，请使用新密码登录');
+                setIsForgot(false);
+                setIsLogin(true);
+                forgotForm.resetFields();
+              } catch (e: any) {
+                const msg = e?.response?.data?.detail || '重置失败，请稍后再试';
+                message.error(msg);
+              }
+            }}
+          >
+            <Form.Item name="phone" label="手机号" rules={[{ required: true, message: '请输入手机号' }]}> 
+              <Input placeholder="请输入绑定的手机号" />
+            </Form.Item>
+            <Form.Item name="code" label="验证码（演示环境任意值通过）">
+              <Input placeholder="请输入验证码" />
+            </Form.Item>
+            <Form.Item name="newPwd" label="新密码" rules={[{ required: true, message: '请输入新密码' }, { min: 6, message: '至少6位' }]}> 
+              <Input.Password placeholder="请设置新密码" />
+            </Form.Item>
+            <Form.Item
+              name="confirmPwd"
+              label="确认新密码"
+              dependencies={["newPwd"]}
+              rules={[
+                { required: true, message: '请确认新密码' },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue('newPwd') === value) return Promise.resolve();
+                    return Promise.reject(new Error('两次输入的密码不一致！'));
+                  },
+                }),
+              ]}
+            >
+              <Input.Password placeholder="请再次输入新密码" />
+            </Form.Item>
+            <Form.Item>
+              <Button type="primary" htmlType="submit" className="w-full bg-[#1E90FF]">
+                重置密码
+              </Button>
+            </Form.Item>
+            <div className="text-center text-gray-600 mt-2">
+              记起密码了？
+              <span
+                className="text-[#1E90FF] cursor-pointer"
+                onClick={() => {
+                  setIsForgot(false);
+                  setIsLogin(true);
+                }}
+              >
+                返回登录
               </span>
             </div>
           </Form>

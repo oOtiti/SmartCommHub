@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import icon from '../assets/icon.png';
+import { api } from '../api/client';
 
 // 定义类型
 type SidebarOption = 'userInfo' | 'userProfile' | 'orderManage' | 'aiAnalysis' | 'settings';
@@ -133,31 +134,42 @@ const Profile = () => {
   };
 
   // 保存设置
-  const handleSaveSettings = () => {
-    if (newPassword && newPassword !== confirmPassword) {
-      alert('新密码与确认密码不一致！');
+  const handleSaveSettings = async () => {
+    // 修改密码：后端调用 /api/auth/change-password，需要 Authorization
+    try {
+      if (newPassword || oldPassword || confirmPassword) {
+        if (!oldPassword || !newPassword) {
+          alert('请填写原密码与新密码');
+          return;
+        }
+        if (newPassword !== confirmPassword) {
+          alert('新密码与确认密码不一致！');
+          return;
+        }
+        await api.post('/auth/change-password', {
+          old_password: oldPassword,
+          new_password: newPassword,
+        });
+        alert('密码已更新');
+      }
+
+      // 更新手机号（如填写）
+      if (newPhone && newPhone.trim()) {
+        await api.patch('/auth/profile', { phone: newPhone.trim() });
+        alert('手机号已更新');
+      }
+    } catch (e: any) {
+      // 常见错误：400 原密码不正确；401 未登录/令牌失效
+      const msg = e?.response?.data?.detail || '修改密码失败，请检查原密码或登录状态';
+      alert(msg);
       return;
+    } finally {
+      // 清空输入框
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setNewPhone('');
     }
-
-    const savedSettings = {
-      password: newPassword ? '已更新' : '未修改',
-      phone: newPhone || '未修改',
-      aiApiUrl,
-      aiApiKey,
-      allowAiAnalysis,
-      publicComment,
-      receivePush,
-      theme,
-      fontSize,
-    };
-    console.log('保存的设置：', savedSettings);
-    alert('设置保存成功！');
-
-    // 清空输入框
-    setOldPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setNewPhone('');
   };
 
   // 渲染AI分析子内容

@@ -133,7 +133,7 @@
   "username": "family003",
   "password": "Family@12345",
   "user_type": 2,
-  "phone": "13800138003"
+  "phone": "13800138003"  // 必填，需唯一
 }
 ```
 - Response
@@ -150,6 +150,16 @@
   - `409 Conflict` 用户名已存在 / 手机号已存在
   - `400 Bad Request` 仅支持注册老人(1)或家属(2)；不允许注册管理员或服务商
 
+### 忘记密码（演示版）
+- `POST /api/auth/forgot/request`（请求验证码）
+  - Body: `{ "phone": "13800138003" }`
+  - Response: `{ "message": "验证码已发送（演示环境，任意输入均视为通过）" }`
+  - 说明：不暴露手机号是否存在，统一返回成功。
+- `POST /api/auth/forgot/reset`（重置密码）
+  - Body: `{ "phone": "13800138003", "code": "任意", "new_password": "New@12345" }`
+  - Response: `{ "message": "密码已重置", "username": "family003" }`
+  - 说明：演示环境验证码任意值通过；需账户已绑定手机号。
+
 ### 用户类型映射与权限
 - 值到身份：
   - 0 / 4：管理员（系统/运营），接口鉴权视为管理员
@@ -158,8 +168,14 @@
   - 3：服务商账号
 - 创建规则：
   - 管理员账户：不可通过 API 创建
-  - 家庭/老人：使用公开注册 `/api/auth/register`
+  - 家庭/老人：使用公开注册 `/api/auth/register`（需绑定 `phone`）
   - 服务商：仅管理员可创建 `/api/auth/admin/create-user`（`user_type=3`）
+
+### 个人资料
+- `GET /api/auth/profile`：返回 `{ id, username, user_type, is_active, phone }`
+- `PATCH /api/auth/profile`：更新资料（当前支持 `phone`）
+  - Body: `{ "phone": "13800138003" }`
+  - 约束：手机号唯一；若重复返回 `409 Conflict`
 
 ---
 

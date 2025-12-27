@@ -10,6 +10,7 @@ import photo5 from '../assets/Photo/智慧社区.jpg';
 import '../assets/iconfont/iconfont.json';
 import '../styles/home-aside.css';
 import { useEffect, useState } from 'react';
+import Uesr from
 const Nav = () => {
   const [showHeader, setShowHeader] = useState(true);
   useEffect(() => {
@@ -94,10 +95,7 @@ const Home = () => {
             <a href="#" className="text-[0px]">
               <span className="inline-block iconfont icon-sousuo text-[20px]! font-600"></span>
             </a>
-            <a href="#" className="text-[20px] ml-[80px] flex font-500">
-              login
-              <span className="inline-block iconfont icon-yonghuguanli text-[25px]! ml-[10px]"></span>
-            </a>
+
           </div>
         </div>
       </header>

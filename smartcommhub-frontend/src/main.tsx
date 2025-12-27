@@ -6,11 +6,13 @@ import './styles/index.css';
 import Home from './views/Home';
 import './assets/iconfont/iconfont.css';
 import Profile from './views/Profile';
+import Navbar from './components/User';
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <Home />
       <Profile />
+      <Navbar />
     </BrowserRouter>
   </StrictMode>
 );

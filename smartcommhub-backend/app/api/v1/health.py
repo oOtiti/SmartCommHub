@@ -12,9 +12,13 @@ router = APIRouter()
 class HealthRecordCreateReq(BaseModel):
     elderly_id: int
     monitor_type: str
-    monitor_value: str
+    # 数值型监控值，便于聚合与建模
+    monitor_value: float
     monitor_time: str
-    is_abnormal: str
+    # 异常标记：0/1，默认0
+    is_abnormal: int = 0
+    # 设备ID（可选），默认 mock_device_001
+    device_id: str = "mock_device_001"
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)

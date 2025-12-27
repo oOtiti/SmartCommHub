@@ -3,7 +3,7 @@
 import type { RouteObject } from 'react-router-dom';
 // 引入你的页面组件（先创建2个测试页，后面会写）
 import Home from '../views/Home.tsx';
-import About from '../views/About.tsx';
+import About from '../views/Profile.tsx';
 
 // 路由规则：URL路径 ↔ 页面组件
 export const constantRoutes: RouteObject[] = [

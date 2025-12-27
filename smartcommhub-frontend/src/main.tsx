@@ -3,16 +3,12 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import 'virtual:uno.css';
 import './styles/index.css';
-import Home from './views/Home';
 import './assets/iconfont/iconfont.css';
-import Profile from './views/Profile';
-import Navbar from './components/User';
+import App from './App.tsx';
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <Home />
-      <Profile />
-      <Navbar />
+      <App />
     </BrowserRouter>
   </StrictMode>
 );

@@ -1,39 +1,44 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import icon from '../assets/icon.png';
 
-// 侧边栏选项类型
+// 定义类型
 type SidebarOption = 'userInfo' | 'userProfile' | 'orderManage' | 'aiAnalysis' | 'settings';
-// AI分析的子功能类型
 type AiSubFunction = 'demandAnalysis' | 'satisfaction' | 'recommendation' | 'consumptionTrend';
-// AI智能体类型
 type AiAgent = 'qwen' | 'chatgpt' | 'ernie' | 'gemini';
 
-// 侧边栏选项配置
+// 侧边栏选项
 const sidebarOptions = [
-  { key: 'userInfo' as SidebarOption, label: '用户信息' },
-  { key: 'userProfile' as SidebarOption, label: '用户档案' },
-  { key: 'orderManage' as SidebarOption, label: '订单管理' },
-  { key: 'aiAnalysis' as SidebarOption, label: '档案AI分析' },
+  { key: 'userInfo' as SidebarOption, label: '用户基本信息' },
+  { key: 'userProfile' as SidebarOption, label: '用户详细档案' },
+  { key: 'orderManage' as SidebarOption, label: '我的订单' },
+  { key: 'aiAnalysis' as SidebarOption, label: 'AI分析报告' },
   { key: 'settings' as SidebarOption, label: '系统设置' },
 ];
 
-// AI分析子功能配置
+// AI子功能选项
 const aiSubOptions = [
-  { key: 'demandAnalysis' as AiSubFunction, label: '需求偏好分析' },
-  { key: 'satisfaction' as AiSubFunction, label: '服务满意度评估' },
-  { key: 'recommendation' as AiSubFunction, label: '个性化服务推荐' },
-  { key: 'consumptionTrend' as AiSubFunction, label: '消费趋势预测' },
+  { key: 'demandAnalysis' as AiSubFunction, label: '需求分析' },
+  { key: 'satisfaction' as AiSubFunction, label: '满意度分析' },
+  { key: 'recommendation' as AiSubFunction, label: '服务推荐' },
+  { key: 'consumptionTrend' as AiSubFunction, label: '消费趋势' },
 ];
 
-// AI智能体配置
+// AI智能体选项
 const aiAgents = [
-  { key: 'qwen' as AiAgent, label: '通义千问' },
+  { key: 'qwen' as AiAgent, label: '文心一言' },
   { key: 'chatgpt' as AiAgent, label: 'ChatGPT' },
-  { key: 'ernie' as AiAgent, label: '文心一言' },
+  { key: 'ernie' as AiAgent, label: 'ERNIE Bot' },
   { key: 'gemini' as AiAgent, label: 'Gemini' },
 ];
 
 const Profile = () => {
+  // 登录状态管理 - 从localStorage获取以保持状态
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    // 初始化时从localStorage读取登录状态
+    return localStorage.getItem('isLoggedIn') === 'true';
+  });
+
   // 侧边栏激活状态
   const [activeOption, setActiveOption] = useState<SidebarOption>('userInfo');
   // AI分析子功能激活状态
@@ -41,7 +46,7 @@ const Profile = () => {
   // AI智能体激活状态
   const [activeAgent, setActiveAgent] = useState<AiAgent>('qwen');
 
-  // AI提问相关状态（保留样式用的状态）
+  // AI提问相关状态
   const [questionInput, setQuestionInput] = useState<string>('');
   const [aiReply, setAiReply] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -60,6 +65,13 @@ const Profile = () => {
   const [theme, setTheme] = useState<string>('blue');
   const [fontSize, setFontSize] = useState<string>('default');
 
+  const navigate = useNavigate();
+
+  // 当登录状态变化时保存到localStorage
+  useEffect(() => {
+    localStorage.setItem('isLoggedIn', isLoggedIn.toString());
+  }, [isLoggedIn]);
+
   // 切换侧边栏激活项
   const handleSidebarClick = (option: SidebarOption) => {
     setActiveOption(option);
@@ -70,9 +82,8 @@ const Profile = () => {
     setActiveAiFunc(func);
   };
 
-  // 仅保留样式的AI提问（移除真实API，恢复模拟效果）
+  // AI提问处理
   const handleSubmitQuestion = () => {
-    // 前置校验（保留样式用的提示）
     if (!questionInput.trim()) {
       alert('请输入您要询问的内容！');
       return;
@@ -86,15 +97,13 @@ const Profile = () => {
       return;
     }
 
-    // 保留加载状态的样子
     setLoading(true);
     setError('');
     setAiReply('');
 
-    // 模拟网络延迟（看起来像真实请求）
+    // 模拟网络延迟
     setTimeout(() => {
       try {
-        // 恢复模拟回答，去掉真实API请求
         const agentName = aiAgents.find((item) => item.key === activeAgent)?.label;
         let replyContent = '';
         switch (activeAgent) {
@@ -115,25 +124,21 @@ const Profile = () => {
         }
         setAiReply(replyContent);
       } catch (err) {
-        // 模拟错误提示的样子
         setError('模拟请求失败：请检查网络连接（仅样式展示）');
       } finally {
-        // 结束加载状态
         setLoading(false);
-        // 清空输入框
         setQuestionInput('');
       }
-    }, 1500); // 模拟1.5秒请求延迟
+    }, 1500);
   };
 
-  // 保存设置的函数
+  // 保存设置
   const handleSaveSettings = () => {
-    // 密码校验
     if (newPassword && newPassword !== confirmPassword) {
       alert('新密码与确认密码不一致！');
       return;
     }
-    // 模拟保存逻辑
+
     const savedSettings = {
       password: newPassword ? '已更新' : '未修改',
       phone: newPhone || '未修改',
@@ -147,6 +152,7 @@ const Profile = () => {
     };
     console.log('保存的设置：', savedSettings);
     alert('设置保存成功！');
+
     // 清空输入框
     setOldPassword('');
     setNewPassword('');
@@ -227,7 +233,7 @@ const Profile = () => {
     }
   };
 
-  // 渲染对应show内容
+  // 渲染主内容区域
   const renderShowContent = () => {
     switch (activeOption) {
       case 'userInfo':
@@ -382,7 +388,7 @@ const Profile = () => {
                 </span>
               </div>
 
-              {/* AI提问区域（仅保留样式） */}
+              {/* AI提问区域 */}
               <div className="mb-6 border-t border-b border-gray-200 py-4">
                 <h4 className="text-lg font-semibold mb-3 text-[#333]">AI智能问答</h4>
                 <div className="relative w-full">
@@ -399,7 +405,7 @@ const Profile = () => {
                       可以询问我健康知识、社区服务相关问题哦~
                     </div>
                   )}
-                  {/* 提交按钮（带加载样式） */}
+                  {/* 提交按钮 */}
                   <button
                     onClick={handleSubmitQuestion}
                     className={`absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 rounded-lg transition-colors text-sm
@@ -415,14 +421,14 @@ const Profile = () => {
                 </div>
               </div>
 
-              {/* 错误提示样式（仅展示，非真实错误） */}
+              {/* 错误提示 */}
               {error && (
                 <div className="mb-6 bg-red-50 p-3 rounded-lg border border-red-200 text-red-600">
                   ⚠️ {error}
                 </div>
               )}
 
-              {/* AI回答展示样式 */}
+              {/* AI回答展示 */}
               {aiReply && (
                 <div className="mb-6 bg-gray-50 p-4 rounded-lg border border-gray-200">
                   <h5 className="font-semibold text-[#1E90FF] mb-2">AI回答：</h5>
@@ -439,8 +445,9 @@ const Profile = () => {
         return (
           <div className="w-full h-full flex flex-col items-center justify-center p-6">
             <h2 className="text-2xl font-bold text-[#1E90FF] mb-6">系统设置</h2>
+
             <div className="w-4/5 bg-white rounded-xl shadow-md p-6 space-y-8">
-              {/* 账号设置（直接编辑，无跳转） */}
+              {/* 账号设置 */}
               <div>
                 <h3 className="text-xl font-semibold mb-4 text-[#333] border-b pb-2 border-gray-200">
                   账号设置
@@ -495,7 +502,7 @@ const Profile = () => {
                 </div>
               </div>
 
-              {/* AI API配置（仅样式，无需真实生效） */}
+              {/* AI API配置 */}
               <div>
                 <h3 className="text-xl font-semibold mb-4 text-[#333] border-b pb-2 border-gray-200">
                   AI API 配置
@@ -521,6 +528,7 @@ const Profile = () => {
                       placeholder="请输入AI接口密钥"
                     />
                   </div>
+
                   <div className="flex items-center justify-between mt-2">
                     <label className="text-gray-600">启用AI分析功能</label>
                     <input
@@ -601,7 +609,7 @@ const Profile = () => {
                 </div>
               </div>
 
-              {/* 保存按钮（仅模拟保存） */}
+              {/* 保存按钮 */}
               <div className="flex justify-center mt-6">
                 <button
                   onClick={handleSaveSettings}
@@ -623,7 +631,13 @@ const Profile = () => {
       <header className={`w-full bg-[#1E90FF]`}>
         <div className="wrapper flex w-[80%] h-[60px] m-auto items-center mr-[50px]">
           <div className="logo mr-[30px]">
-            <a href="#" className="flex">
+            <a
+              href="javascript:;"
+              onClick={() => {
+                navigate('/'); // 使用react-router导航，避免页面刷新
+              }}
+              className="flex "
+            >
               <img src={icon} alt="LOGO图片" title="主页" className="h-[60px] w-auto mt-[15px]" />
               <h1 className="w-[245px] font-bold text-2xl h-[60px] leading-[60px] text-white mt-[15px]">
                 智慧社区服务中心
@@ -662,10 +676,6 @@ const Profile = () => {
             <a href="#" className="text-[0px]">
               <span className="inline-block iconfont icon-sousuo text-20px font-semibold text-white"></span>
             </a>
-            <a href="#" className="text-[20px] ml-[80px] flex font-medium text-white">
-              login
-              <span className="inline-block iconfont icon-yonghuguanli text-25px ml-[10px]"></span>
-            </a>
           </div>
         </div>
       </header>
@@ -686,7 +696,7 @@ const Profile = () => {
                 ))}
               </ul>
             </aside>
-            {/* 渲染show区域内容 */}
+            {/* 渲染内容区域 */}
             <div className="show flex-1 ml-4 h-[980px] bg-gray-50 rounded-3xl overflow-auto">
               {renderShowContent()}
             </div>

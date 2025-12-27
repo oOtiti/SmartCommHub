@@ -1,4 +1,6 @@
 #配置管理
+#显示传入 > 环境变量 > .env > 类体默认值
+#  类似：Settings(DATABASE_URL="postgresql+psycopg2://kwuser:kwpass@localhost:5432/kwdb") > EXPORT *** > .env > 类体默认值(class Settings(BaseSettings):下面***)
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 from pathlib import Path
@@ -41,6 +43,29 @@ class Settings(BaseSettings):
 
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str = "logs/app.log"
+
+    # MQTT 配置（订阅端）
+    # 可按实际环境修改，或在 .env 中覆盖
+    MQTT_ENABLED: bool = True
+    MQTT_BROKER_URL: str = "127.0.0.1"
+    MQTT_BROKER_PORT: int = 1883
+    MQTT_TOPIC: str = "smartcommhub/health"
+    MQTT_ACCESS_TOPIC: str = "smartcommhub/access"
+    MQTT_CLIENT_ID: str = "sch_backend_consumer"
+    MQTT_QUEUE_MAXSIZE: int = 1000
+
+    # 个性化异常检测（边缘）
+    ANOMALY_PERSONAL_ENABLED: bool = True
+    ANOMALY_ALPHA: float = 0.1            # EWMA 平滑系数（0-1）
+    ANOMALY_K_SIGMA: float = 3.0          # 异常阈值（|x-μ| > k·σ）
+    ANOMALY_MIN_SAMPLES: int = 50         # 至少样本数，冷启动前不启用个性化
+
+    # 门禁进出个性化异常（边缘）
+    ACCESS_ANOMALY_ENABLED: bool = True
+    ACCESS_ALPHA: float = 0.1             # EWMA 平滑系数
+    ACCESS_K_SIGMA: float = 3.0           # 异常阈值（|x-μ| > k·σ）
+    ACCESS_MIN_SAMPLES: int = 20          # 冷启动样本数（外出时长/外出间隔）
+    ACCESS_CHECK_INTERVAL_SECONDS: int = 30  # 周期检测间隔（未归/未出门）
 
     model_config = SettingsConfigDict(
         env_file=str(_ENV_FILE),

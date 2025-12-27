@@ -94,3 +94,111 @@ def admin_reset_password(req: AdminResetReq, admin_user = Depends(require_admin)
     if not ok:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="重置失败")
     return {"message": "密码已重置", "username": target.username}
+
+# 管理员创建用户
+class AdminCreateUserReq(BaseModel):
+    username: str
+    password: str
+    # 0=管理员, 1=老人, 2=家属, 3=服务商（兼容 0/4 作为管理员）
+    user_type: int = 2
+    phone: str | None = None
+    is_active: bool = True
+    elderly_id: int | None = None
+    family_id: int | None = None
+    provider_id: int | None = None
+
+class AdminCreateUserResp(BaseModel):
+    id: int
+    username: str
+    user_type: int
+    is_active: bool
+    phone: str | None = None
+
+@router.post("/admin/create-user", response_model=AdminCreateUserResp, status_code=status.HTTP_201_CREATED)
+def admin_create_user(req: AdminCreateUserReq, admin_user = Depends(require_admin), db: Session = Depends(get_db)):
+    # 仅允许管理员创建服务商账号；禁止创建管理员与家庭/老人（这两类请使用公开注册）
+    if req.user_type in (0, 4):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不允许创建管理员账户")
+    if req.user_type in (1, 2):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="家庭/老人请使用 /api/auth/register 自助注册")
+    if req.user_type != 3:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="仅支持创建服务商账户(user_type=3)")
+    # 唯一性校验
+    existed = user_service.get_by_username(db, req.username)
+    if existed:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="用户名已存在")
+    if req.phone:
+        from app.dao.user_dao import user_dao
+        if user_dao.get_by_phone(db, req.phone):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="手机号已存在")
+
+    user = user_service.create_user(
+        db,
+        username=req.username,
+        password=req.password,
+        user_type=req.user_type,
+        is_active=req.is_active,
+        phone=req.phone,
+        elderly_id=req.elderly_id,
+        family_id=req.family_id,
+        provider_id=req.provider_id,
+    )
+    return AdminCreateUserResp(
+        id=int(user.user_id),
+        username=user.username,
+        user_type=int(user.user_type),
+        is_active=bool(user.is_active),
+        phone=getattr(user, "phone", None),
+    )
+
+# 公开注册：家庭/老人
+class RegisterReq(BaseModel):
+    username: str
+    password: str
+    # 允许 1(老人) 或 2(家属)，默认 2
+    user_type: int = 2
+    phone: str | None = None
+    elderly_id: int | None = None
+    family_id: int | None = None
+
+class RegisterResp(BaseModel):
+    id: int
+    username: str
+    user_type: int
+    is_active: bool
+    phone: str | None = None
+
+@router.post("/register", response_model=RegisterResp, status_code=status.HTTP_201_CREATED)
+def register(req: RegisterReq, db: Session = Depends(get_db)):
+    # 类型限制：仅允许 1/2；禁止 0/4 管理员与 3 服务商
+    if req.user_type in (0, 4):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="不允许注册管理员账户")
+    if req.user_type not in (1, 2):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="仅支持注册老人(1)/家属(2)账号")
+
+    # 唯一性
+    existed = user_service.get_by_username(db, req.username)
+    if existed:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="用户名已存在")
+    if req.phone:
+        from app.dao.user_dao import user_dao
+        if user_dao.get_by_phone(db, req.phone):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="手机号已存在")
+
+    user = user_service.create_user(
+        db,
+        username=req.username,
+        password=req.password,
+        user_type=req.user_type,
+        is_active=True,
+        phone=req.phone,
+        elderly_id=req.elderly_id,
+        family_id=req.family_id,
+    )
+    return RegisterResp(
+        id=int(user.user_id),
+        username=user.username,
+        user_type=int(user.user_type),
+        is_active=bool(user.is_active),
+        phone=getattr(user, "phone", None),
+    )

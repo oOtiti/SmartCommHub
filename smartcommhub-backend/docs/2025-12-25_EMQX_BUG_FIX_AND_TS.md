@@ -56,7 +56,7 @@
 2. 准备客户端：
    - WebSocket：
      ```bash
-     wscat -c ws://127.0.0.1:8000/ws/warning
+     p
      ```
    - MQTT 发布（任选其一）：
      - 命令行：

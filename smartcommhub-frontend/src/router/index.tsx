@@ -3,6 +3,7 @@ import type { RouteObject } from 'react-router-dom';
 import Home from '../views/Home.tsx';
 import Profile from '../views/Profile.tsx';
 import MerchantServer from '../views/MerchantServer.tsx';
+import RequireAuth from '../components/RequireAuth';
 // 路由规则：URL路径 ↔ 页面组件
 export const constantRoutes: RouteObject[] = [
   {
@@ -11,11 +12,19 @@ export const constantRoutes: RouteObject[] = [
   },
   {
     path: '/Profile',
-    element: <Profile />,
+    element: (
+      <RequireAuth>
+        <Profile />
+      </RequireAuth>
+    ),
   },
   {
     path: '/MerchantServer',
-    element: <MerchantServer />,
+    element: (
+      <RequireAuth>
+        <MerchantServer />
+      </RequireAuth>
+    ),
   },
   {
     path: '*',

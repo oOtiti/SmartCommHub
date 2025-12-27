@@ -12,6 +12,7 @@ import '../styles/home-aside.css';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import userAvatar from '../assets/Photo/cat.jpg';
+import { useAuthStore } from '../store/auth';
 
 const Nav = () => {
   const [showHeader, setShowHeader] = useState(true);
@@ -63,8 +64,12 @@ const Nav = () => {
 
 const Home = () => {
   const [show, setshow] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userInfo, setUserInfo] = useState({ username: '', userType: 'user' });
+  const isLoggedIn = useAuthStore((s) => s.isLoggedIn);
+  const profile = useAuthStore((s) => s.profile);
+  const setTokens = useAuthStore((s) => s.setTokens);
+  const loginApi = useAuthStore((s) => s.login);
+  const registerApi = useAuthStore((s) => s.register);
+  const logoutApi = useAuthStore((s) => s.logout);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isLogin, setIsLogin] = useState(true);
   const [loginForm] = Form.useForm();
@@ -74,21 +79,22 @@ const Home = () => {
 
   // ========== 新增：页面加载时读取登录状态（核心修复） ==========
   useEffect(() => {
-    // 读取localStorage中的登录状态
-    const savedIsLoggedIn = localStorage.getItem('isLoggedIn');
-    const savedUserInfo = localStorage.getItem('userInfo');
-
-    if (savedIsLoggedIn === 'true' && savedUserInfo) {
-      setIsLoggedIn(true);
-      setUserInfo(JSON.parse(savedUserInfo));
+    // 初始化：如果本地已有token，尝试加载资料
+    const access = localStorage.getItem('accessToken');
+    const refresh = localStorage.getItem('refreshToken');
+    if (access && refresh) {
+      setTokens(access, refresh);
+      // 延迟获取资料，避免阻塞首屏
+      useAuthStore.getState().fetchProfile().catch(() => {});
     }
-  }, []);
+  }, [setTokens]);
 
   // 原有逻辑：点击外部关闭菜单
   useEffect(() => {
-    const handleClickOutside = (e) => {
+    const handleClickOutside = (e: MouseEvent) => {
       const menuContainer = document.getElementById('user-menu-container');
-      if (menuContainer && !menuContainer.contains(e.target)) {
+      const target = e.target as Node | null;
+      if (menuContainer && target && !menuContainer.contains(target)) {
         setShowMenu(false);
       }
     };
@@ -102,23 +108,13 @@ const Home = () => {
   const handleLogin = async () => {
     try {
       const values = await loginForm.validateFields();
-      if (values.username && values.password && values.userType) {
-        message.success(`登录成功！欢迎${values.userType === 'user' ? '普通用户' : '运营商'}`);
+      const ok = await loginApi(values.username, values.password);
+      if (ok) {
+        message.success('登录成功');
         setShowAuthModal(false);
-        setIsLoggedIn(true);
-        setUserInfo({ username: values.username, userType: values.userType });
-
-        // ========== 新增：登录成功后保存状态到localStorage ==========
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem(
-          'userInfo',
-          JSON.stringify({
-            username: values.username,
-            userType: values.userType,
-          })
-        );
-
         loginForm.resetFields();
+      } else {
+        message.error('登录失败，请检查账号密码！');
       }
     } catch (error) {
       message.error('登录失败，请检查账号密码！');
@@ -129,10 +125,23 @@ const Home = () => {
   const handleRegister = async () => {
     try {
       const values = await registerForm.validateFields();
-      if (values.username && values.password && values.confirmPwd && values.userType) {
+      if (!values.username || !values.password || !values.confirmPwd) return;
+      if (values.password !== values.confirmPwd) {
+        message.error('两次密码不一致');
+        return;
+      }
+      const isMerchant = values.userType === 'merchant';
+      if (isMerchant) {
+        message.info('服务商账号需由管理员创建，请联系管理员');
+        return;
+      }
+      const ok = await registerApi(values.username, values.password, 2);
+      if (ok) {
         message.success('注册成功！请登录');
         setIsLogin(true);
         registerForm.resetFields();
+      } else {
+        message.error('注册失败：用户名或手机号可能已存在');
       }
     } catch (error) {
       message.error('注册失败，请检查信息！');
@@ -141,15 +150,10 @@ const Home = () => {
 
   // 退出登录逻辑（新增：清除localStorage中的状态）
   const handleLogout = () => {
-    setIsLoggedIn(false);
-    setUserInfo({ username: '', userType: 'user' });
+    logoutApi();
     message.success('退出登录成功！');
     navigate('/');
     setShowMenu(false);
-
-    // ========== 新增：退出登录时清除localStorage ==========
-    localStorage.removeItem('isLoggedIn');
-    localStorage.removeItem('userInfo');
   };
 
   // 以下所有代码完全无修改，和你提供的一致
@@ -225,7 +229,7 @@ const Home = () => {
                       border: '2px solid #fff',
                     }}
                   />
-                  <span className="text-[16px] font-medium text-white">{userInfo.username}</span>
+                  <span className="text-[16px] font-medium text-white">{profile?.username || '用户'}</span>
                 </div>
 
                 <div
@@ -236,14 +240,14 @@ const Home = () => {
                   <div
                     className="px-4 py-2 hover:bg-[#f5f5f5] cursor-pointer"
                     onClick={() => {
-                      const targetPath =
-                        userInfo.userType === 'merchant' ? '/MerchantServer' : '/Profile';
+                      const isProvider = profile?.user_type === 'provider';
+                      const targetPath = isProvider ? '/MerchantServer' : '/Profile';
                       navigate(targetPath);
                       setShowMenu(false);
                     }}
                   >
                     <span style={{ color: '#333' }}>
-                      {userInfo.userType === 'merchant' ? '商户中心' : '个人中心'}
+                      {profile?.user_type === 'provider' ? '商户中心' : '个人中心'}
                     </span>
                   </div>
                   <div

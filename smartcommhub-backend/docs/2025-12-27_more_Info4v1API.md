@@ -94,6 +94,73 @@
 { "message": "密码已重置", "username": "operator001" }
 ```
 
+### 管理员创建用户
+- `POST /api/auth/admin/create-user`
+- Header: `Authorization`（需要管理员鉴权）
+- Body
+```json
+{
+  "username": "family002",
+  "password": "Family@12345",
+  "user_type": 3,
+  "phone": "13800138002",
+  "is_active": true,
+  "elderly_id": null,
+  "family_id": null,
+  "provider_id": null
+}
+```
+- Response
+```json
+{
+  "id": 12345,
+  "username": "family002",
+  "user_type": 3,
+  "is_active": true,
+  "phone": "13800138002"
+}
+```
+- Errors
+  - `409 Conflict` 用户名已存在 / 手机号已存在
+  - `403 Forbidden` 非管理员权限
+  - `400 Bad Request` 仅支持服务商(user_type=3)；不允许创建管理员或家庭/老人
+
+### 公开注册（家庭/老人）
+- `POST /api/auth/register`
+- Body
+```json
+{
+  "username": "family003",
+  "password": "Family@12345",
+  "user_type": 2,
+  "phone": "13800138003"
+}
+```
+- Response
+```json
+{
+  "id": 12346,
+  "username": "family003",
+  "user_type": 2,
+  "is_active": true,
+  "phone": "13800138003"
+}
+```
+- Errors
+  - `409 Conflict` 用户名已存在 / 手机号已存在
+  - `400 Bad Request` 仅支持注册老人(1)或家属(2)；不允许注册管理员或服务商
+
+### 用户类型映射与权限
+- 值到身份：
+  - 0 / 4：管理员（系统/运营），接口鉴权视为管理员
+  - 1：老人账号
+  - 2：家庭（家属）账号
+  - 3：服务商账号
+- 创建规则：
+  - 管理员账户：不可通过 API 创建
+  - 家庭/老人：使用公开注册 `/api/auth/register`
+  - 服务商：仅管理员可创建 `/api/auth/admin/create-user`（`user_type=3`）
+
 ---
 
 ## 老人档案（Elders）
@@ -550,7 +617,7 @@ export default function WarningBoard() {
 - 联调接口：
   - 查询基线：`GET /api/edge/baseline?elderly_id=1&device_id=demo&monitor_type=heart_rate`（需 `Authorization`）。
 
-### 备注与建议
+### 备注与建议(jym)
 - 安全：WS `/ws/warning` 已强制鉴权；管理员/运营接收全量，其余按老人集合过滤。浏览器侧请避免将 Token 暴露到可共享日志。
 - 可靠性：边缘判定策略应逐步从阈值过渡到滑窗统计与多特征融合；可利用 `is_abnormal` + 规则引擎或轻量模型。
 - 性能：广播已采用 200ms 批处理节流；前端可做合并渲染与限速。

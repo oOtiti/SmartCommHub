@@ -1,0 +1,1251 @@
+{
+  "schema": "public",
+  "tables": [
+    {
+      "name": "service_item",
+      "columns": [
+        {
+          "name": "service_id",
+          "type": "BIGINT",
+          "nullable": false,
+          "default": "nextval('\"public\".service_item_service_id_seq'::regclass)",
+          "autoincrement": true,
+          "comment": null
+        },
+        {
+          "name": "provider_id",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "content",
+          "type": "VARCHAR(500)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "duration",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "price",
+          "type": "NUMERIC(8, 2)",
+          "nullable": false,
+          "default": "0.00",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "service_scope",
+          "type": "VARCHAR(200)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "status",
+          "type": "VARCHAR(30)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        }
+      ],
+      "primary_key": {
+        "constrained_columns": [
+          "service_id"
+        ],
+        "name": "service_item_pkey",
+        "comment": null
+      },
+      "foreign_keys": [
+        {
+          "name": "service_item_provider_id_fkey",
+          "constrained_columns": [
+            "provider_id"
+          ],
+          "referred_schema": "public",
+          "referred_table": "provider",
+          "referred_columns": [
+            "provider_id"
+          ],
+          "options": {},
+          "comment": null
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_service_item_provider_id",
+          "unique": false,
+          "column_names": [
+            "provider_id"
+          ]
+        },
+        {
+          "name": "idx_service_item_status",
+          "unique": false,
+          "column_names": [
+            "status"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "service_order",
+      "columns": [
+        {
+          "name": "order_id",
+          "type": "BIGINT",
+          "nullable": false,
+          "default": "nextval('\"public\".service_order_order_id_seq'::regclass)",
+          "autoincrement": true,
+          "comment": null
+        },
+        {
+          "name": "elderly_id",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "service_id",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "reserve_time",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "service_time",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "order_status",
+          "type": "VARCHAR(30)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "pay_status",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "eval_score",
+          "type": "NUMERIC(3, 1)",
+          "nullable": true,
+          "default": "0.0",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "eval_content",
+          "type": "TEXT",
+          "nullable": true,
+          "default": null,
+          "autoincrement": false,
+          "comment": "评价内容（可能含敏感） -- #ENCRYPT"
+        },
+        {
+          "name": "eval_time",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        }
+      ],
+      "primary_key": {
+        "constrained_columns": [
+          "order_id"
+        ],
+        "name": "service_order_pkey",
+        "comment": null
+      },
+      "foreign_keys": [
+        {
+          "name": "service_order_elderly_id_fkey",
+          "constrained_columns": [
+            "elderly_id"
+          ],
+          "referred_schema": "public",
+          "referred_table": "elderly",
+          "referred_columns": [
+            "elderly_id"
+          ],
+          "options": {},
+          "comment": null
+        },
+        {
+          "name": "service_order_service_id_fkey",
+          "constrained_columns": [
+            "service_id"
+          ],
+          "referred_schema": "public",
+          "referred_table": "service_item",
+          "referred_columns": [
+            "service_id"
+          ],
+          "options": {},
+          "comment": null
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_service_order_elderly_id",
+          "unique": false,
+          "column_names": [
+            "elderly_id"
+          ]
+        },
+        {
+          "name": "idx_service_order_service_id",
+          "unique": false,
+          "column_names": [
+            "service_id"
+          ]
+        },
+        {
+          "name": "idx_service_order_service_time",
+          "unique": false,
+          "column_names": [
+            "service_time"
+          ],
+          "column_sorting": {
+            "service_time": [
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "health_record",
+      "columns": [
+        {
+          "name": "record_id",
+          "type": "BIGINT",
+          "nullable": false,
+          "default": "nextval('\"public\".health_record_record_id_seq'::regclass)",
+          "autoincrement": true,
+          "comment": null
+        },
+        {
+          "name": "elderly_id",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "monitor_type",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "monitor_value",
+          "type": "NUMERIC(6, 2)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "monitor_time",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "is_abnormal",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "device_id",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": "'mock_device_001'::character varying",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        }
+      ],
+      "primary_key": {
+        "constrained_columns": [
+          "record_id"
+        ],
+        "name": "health_record_pkey",
+        "comment": null
+      },
+      "foreign_keys": [
+        {
+          "name": "health_record_elderly_id_fkey",
+          "constrained_columns": [
+            "elderly_id"
+          ],
+          "referred_schema": "public",
+          "referred_table": "elderly",
+          "referred_columns": [
+            "elderly_id"
+          ],
+          "options": {},
+          "comment": null
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_health_record_elder_time",
+          "unique": false,
+          "column_names": [
+            "elderly_id",
+            "monitor_time"
+          ],
+          "column_sorting": {
+            "monitor_time": [
+              "desc"
+            ]
+          }
+        },
+        {
+          "name": "idx_health_record_type_time",
+          "unique": false,
+          "column_names": [
+            "monitor_type",
+            "monitor_time"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "community_notice",
+      "columns": [
+        {
+          "name": "notice_id",
+          "type": "BIGINT",
+          "nullable": false,
+          "default": "nextval('\"public\".community_notice_notice_id_seq'::regclass)",
+          "autoincrement": true,
+          "comment": null
+        },
+        {
+          "name": "community_id",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "title",
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "content",
+          "type": "VARCHAR(1000)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": "公告内容（可选加密） -- #ENCRYPT"
+        },
+        {
+          "name": "publish_time",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "target_group",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        }
+      ],
+      "primary_key": {
+        "constrained_columns": [
+          "notice_id"
+        ],
+        "name": "community_notice_pkey",
+        "comment": null
+      },
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "idx_community_notice_pub",
+          "unique": false,
+          "column_names": [
+            "community_id",
+            "publish_time"
+          ],
+          "column_sorting": {
+            "publish_time": [
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "family_member",
+      "columns": [
+        {
+          "name": "family_id",
+          "type": "BIGINT",
+          "nullable": false,
+          "default": "nextval('\"public\".family_member_family_id_seq'::regclass)",
+          "autoincrement": true,
+          "comment": null
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "phone",
+          "type": "VARCHAR(30)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": "家属手机号 -- #ENCRYPT"
+        },
+        {
+          "name": "relation",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "permission_level",
+          "type": "VARCHAR(30)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "elderly_id",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        }
+      ],
+      "primary_key": {
+        "constrained_columns": [
+          "family_id"
+        ],
+        "name": "family_member_pkey",
+        "comment": null
+      },
+      "foreign_keys": [
+        {
+          "name": "family_member_elderly_id_fkey",
+          "constrained_columns": [
+            "elderly_id"
+          ],
+          "referred_schema": "public",
+          "referred_table": "elderly",
+          "referred_columns": [
+            "elderly_id"
+          ],
+          "options": {
+            "ondelete": "CASCADE"
+          },
+          "comment": null
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_family_member_elderly_id",
+          "unique": false,
+          "column_names": [
+            "elderly_id"
+          ]
+        },
+        {
+          "name": "idx_family_member_phone",
+          "unique": false,
+          "column_names": [
+            "phone"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "provider",
+      "columns": [
+        {
+          "name": "provider_id",
+          "type": "BIGINT",
+          "nullable": false,
+          "default": "nextval('\"public\".provider_provider_id_seq'::regclass)",
+          "autoincrement": true,
+          "comment": null
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "service_type",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "service_nature",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "qualification_id",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": "资质编号 -- #ENCRYPT"
+        },
+        {
+          "name": "contact",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": "联系人/电话等 -- #ENCRYPT"
+        },
+        {
+          "name": "audit_status",
+          "type": "VARCHAR(10)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "belong_community",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        }
+      ],
+      "primary_key": {
+        "constrained_columns": [
+          "provider_id"
+        ],
+        "name": "provider_pkey",
+        "comment": null
+      },
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "idx_provider_service_type",
+          "unique": false,
+          "column_names": [
+            "service_type"
+          ]
+        },
+        {
+          "name": "provider_qualification_id_key",
+          "unique": true,
+          "column_names": [
+            "qualification_id"
+          ],
+          "duplicates_constraint": "provider_qualification_id_key"
+        }
+      ]
+    },
+    {
+      "name": "sys_usr_account",
+      "columns": [
+        {
+          "name": "user_id",
+          "type": "BIGINT",
+          "nullable": false,
+          "default": "nextval('\"public\".sys_usr_account_user_id_seq'::regclass)",
+          "autoincrement": true,
+          "comment": null
+        },
+        {
+          "name": "username",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "phone",
+          "type": "VARCHAR(30)",
+          "nullable": true,
+          "default": null,
+          "autoincrement": false,
+          "comment": "用户手机号（可选加密） -- #ENCRYPT"
+        },
+        {
+          "name": "password_hash",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "user_type",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "1",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "is_active",
+          "type": "BOOLEAN",
+          "nullable": false,
+          "default": "true",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "failed_attempts",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": "0",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "locked_until",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "last_login_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "pwd_changed_at",
+          "type": "TIMESTAMP",
+          "nullable": true,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "elderly_id",
+          "type": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "family_id",
+          "type": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "provider_id",
+          "type": "BIGINT",
+          "nullable": true,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        }
+      ],
+      "primary_key": {
+        "constrained_columns": [
+          "user_id"
+        ],
+        "name": "sys_usr_account_pkey",
+        "comment": null
+      },
+      "foreign_keys": [
+        {
+          "name": "sys_usr_account_elderly_id_fkey",
+          "constrained_columns": [
+            "elderly_id"
+          ],
+          "referred_schema": "public",
+          "referred_table": "elderly",
+          "referred_columns": [
+            "elderly_id"
+          ],
+          "options": {
+            "ondelete": "SET NULL"
+          },
+          "comment": null
+        },
+        {
+          "name": "sys_usr_account_family_id_fkey",
+          "constrained_columns": [
+            "family_id"
+          ],
+          "referred_schema": "public",
+          "referred_table": "family_member",
+          "referred_columns": [
+            "family_id"
+          ],
+          "options": {
+            "ondelete": "SET NULL"
+          },
+          "comment": null
+        },
+        {
+          "name": "sys_usr_account_provider_id_fkey",
+          "constrained_columns": [
+            "provider_id"
+          ],
+          "referred_schema": "public",
+          "referred_table": "provider",
+          "referred_columns": [
+            "provider_id"
+          ],
+          "options": {
+            "ondelete": "SET NULL"
+          },
+          "comment": null
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_sys_usr_phone",
+          "unique": false,
+          "column_names": [
+            "phone"
+          ]
+        },
+        {
+          "name": "idx_sys_usr_user_type",
+          "unique": false,
+          "column_names": [
+            "user_type"
+          ]
+        },
+        {
+          "name": "idx_sys_usr_username",
+          "unique": false,
+          "column_names": [
+            "username"
+          ]
+        },
+        {
+          "name": "sys_usr_account_phone_key",
+          "unique": true,
+          "column_names": [
+            "phone"
+          ],
+          "duplicates_constraint": "sys_usr_account_phone_key"
+        },
+        {
+          "name": "sys_usr_account_username_key",
+          "unique": true,
+          "column_names": [
+            "username"
+          ],
+          "duplicates_constraint": "sys_usr_account_username_key"
+        }
+      ]
+    },
+    {
+      "name": "elderly",
+      "columns": [
+        {
+          "name": "elderly_id",
+          "type": "BIGINT",
+          "nullable": false,
+          "default": "nextval('\"public\".elderly_elderly_id_seq'::regclass)",
+          "autoincrement": true,
+          "comment": null
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "id_card",
+          "type": "CHAR(18)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": "身份证号 -- #ENCRYPT"
+        },
+        {
+          "name": "age",
+          "type": "SMALLINT",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "health_level",
+          "type": "VARCHAR(10)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "emergency_contact",
+          "type": "VARCHAR(11)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": "紧急联系人手机号 -- #ENCRYPT"
+        },
+        {
+          "name": "address",
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": "住址 -- #ENCRYPT"
+        },
+        {
+          "name": "register_time",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        }
+      ],
+      "primary_key": {
+        "constrained_columns": [
+          "elderly_id"
+        ],
+        "name": "elderly_pkey",
+        "comment": null
+      },
+      "foreign_keys": [],
+      "indexes": [
+        {
+          "name": "elderly_id_card_key",
+          "unique": true,
+          "column_names": [
+            "id_card"
+          ],
+          "duplicates_constraint": "elderly_id_card_key"
+        },
+        {
+          "name": "idx_elderly_name",
+          "unique": false,
+          "column_names": [
+            "name"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "access_record",
+      "columns": [
+        {
+          "name": "access_id",
+          "type": "BIGINT",
+          "nullable": false,
+          "default": "nextval('\"public\".access_record_access_id_seq'::regclass)",
+          "autoincrement": true,
+          "comment": null
+        },
+        {
+          "name": "elderly_id",
+          "type": "INTEGER",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "access_type",
+          "type": "VARCHAR(4)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "record_time",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "gate_location",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "is_abnormal",
+          "type": "VARCHAR(4)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        }
+      ],
+      "primary_key": {
+        "constrained_columns": [
+          "access_id"
+        ],
+        "name": "access_record_pkey",
+        "comment": null
+      },
+      "foreign_keys": [
+        {
+          "name": "access_record_elderly_id_fkey",
+          "constrained_columns": [
+            "elderly_id"
+          ],
+          "referred_schema": "public",
+          "referred_table": "elderly",
+          "referred_columns": [
+            "elderly_id"
+          ],
+          "options": {},
+          "comment": null
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_access_record_elder_time",
+          "unique": false,
+          "column_names": [
+            "elderly_id",
+            "record_time"
+          ],
+          "column_sorting": {
+            "record_time": [
+              "desc"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "service_type_dict",
+      "columns": [
+        {
+          "name": "type_code",
+          "type": "VARCHAR(50)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "type_name",
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        }
+      ],
+      "primary_key": {
+        "constrained_columns": [
+          "type_code"
+        ],
+        "name": "service_type_dict_pkey",
+        "comment": null
+      },
+      "foreign_keys": [],
+      "indexes": []
+    },
+    {
+      "name": "community_dict",
+      "columns": [
+        {
+          "name": "community_id",
+          "type": "VARCHAR(20)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "community_name",
+          "type": "VARCHAR(100)",
+          "nullable": false,
+          "default": null,
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        },
+        {
+          "name": "updated_at",
+          "type": "TIMESTAMP",
+          "nullable": false,
+          "default": "now()",
+          "autoincrement": false,
+          "comment": null
+        }
+      ],
+      "primary_key": {
+        "constrained_columns": [
+          "community_id"
+        ],
+        "name": "community_dict_pkey",
+        "comment": null
+      },
+      "foreign_keys": [],
+      "indexes": []
+    }
+  ]
+}

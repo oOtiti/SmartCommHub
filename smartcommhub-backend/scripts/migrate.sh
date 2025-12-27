@@ -57,6 +57,12 @@ echo "[env] 使用连接: $PSQL_URL"
 echo "[1/5] 结构迁移: 01_schema_v1.sql"
 psql "$PSQL_URL" -v ON_ERROR_STOP=1 -f "$SQL_DIR/01_schema_v1.sql"
 
+echo "[1b/5] 家庭组结构: 04_family_groups.sql"
+psql "$PSQL_URL" -v ON_ERROR_STOP=1 -f "$SQL_DIR/04_family_groups.sql"
+
+echo "[1c/5] 告警结构: 05_alerts.sql"
+psql "$PSQL_URL" -v ON_ERROR_STOP=1 -f "$SQL_DIR/05_alerts.sql"
+
 echo "[2/5] 字典数据: 03_seed_dict.sql"
 psql "$PSQL_URL" -v ON_ERROR_STOP=1 -f "$SQL_DIR/03_seed_dict.sql"
 

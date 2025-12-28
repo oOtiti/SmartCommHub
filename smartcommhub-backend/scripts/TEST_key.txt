@@ -44,3 +44,6 @@ family007: Family@12345
 family008: Family@12345
 family009: Family@12345
 family010: Family@12345
+3管理员
+2服务商
+1老人

@@ -6,8 +6,9 @@ import { useAuthStore } from '../store/auth';
 import 'antd/dist/reset.css';
 
 // ========== 类型定义 ==========
-interface Provider {
-  provider_id?: number;
+export interface Provider {
+  provider_id: number;
+  user_id: number;
   name: string;
   service_type: string;
   service_nature: string;
@@ -17,8 +18,8 @@ interface Provider {
   belong_community: string;
 }
 
-interface ServiceItem {
-  service_id?: number;
+export interface ServiceItem {
+  service_id: number;
   provider_id: number;
   name: string;
   content: string;
@@ -28,13 +29,17 @@ interface ServiceItem {
   status: string;
 }
 
-interface ServiceOrder {
-  order_id?: number;
-  elderly_id?: number;
-  service_id?: number;
-  reserve_time?: string;
-  order_status?: string;
-  pay_status?: string;
+export interface ServiceOrder {
+  order_id: number;
+  elderly_id: number;
+  service_id: number;
+  reserve_time: string;
+  service_time: string;
+  order_status: string;
+  pay_status: string;
+  eval_score?: number;
+  eval_content?: string;
+  eval_time?: string;
 }
 
 type ActiveTab = 'overview' | 'provider' | 'services' | 'orders';
@@ -53,6 +58,7 @@ const MerchantServer = () => {
   const [loading, setLoading] = useState(false);
   const [serviceLoading, setServiceLoading] = useState(false);
   const [orderLoading, setOrderLoading] = useState(false);
+  const [allServicesMap, setAllServicesMap] = useState<Record<number, string>>({});
 
   const [showProviderModal, setShowProviderModal] = useState(false);
   const [showServiceModal, setShowServiceModal] = useState(false);
@@ -89,6 +95,14 @@ const MerchantServer = () => {
       if (providerId) {
         const res = await api.get(`/providers/${providerId}`);
         setProvider(res.data);
+      } else if (userData?.user_type === 3) {
+        // 如果是服务商且没有provider_id（profile接口未返回），尝试调用 /providers/me
+        try {
+          const res = await api.get('/providers/me');
+          setProvider(res.data);
+        } catch (e) {
+          message.error('未找到关联的商户信息');
+        }
       } else if (userData?.user_type !== 0) {
         // 非管理员必须有provider_id
         message.error('未找到关联的商户信息');
@@ -135,11 +149,29 @@ const MerchantServer = () => {
     }
   };
 
+  // 获取所有服务项目（用于显示名称）
+  const handleGetAllServices = async () => {
+    try {
+      const response = await api.get('/services/', {
+        params: { offset: 0, limit: 1000 },
+      });
+      const items = (response.data.items || []) as ServiceItem[];
+      const mapping: Record<number, string> = {};
+      items.forEach((item) => {
+        mapping[item.service_id] = item.name;
+      });
+      setAllServicesMap(mapping);
+    } catch (err) {
+      console.error('获取所有服务失败', err);
+    }
+  };
+
   // 加载订单列表
   const loadOrders = async (page: number = 1) => {
     if (!provider?.provider_id) return;
     try {
       setOrderLoading(true);
+      await handleGetAllServices(); // 同时加载所有服务映射
       const offset = (page - 1) * orderPageSize;
       const res = await api.get('/orders/', {
         params: {
@@ -156,6 +188,30 @@ const MerchantServer = () => {
       console.error(error);
     } finally {
       setOrderLoading(false);
+    }
+  };
+
+  // 确认订单
+  const handleConfirmOrder = async (orderId: number) => {
+    try {
+      await api.patch(`/orders/${orderId}/confirm`);
+      message.success('订单已确认');
+      loadOrders(orderPage);
+    } catch (err) {
+      message.error('确认订单失败');
+      console.log('确认订单失败', err);
+    }
+  };
+
+  // 完成订单
+  const handleCompleteOrder = async (orderId: number) => {
+    try {
+      await api.patch(`/orders/${orderId}/complete`);
+      message.success('订单已完成');
+      loadOrders(orderPage);
+    } catch (err) {
+      message.error('完成订单失败');
+      console.log('完成订单失败', err);
     }
   };
 
@@ -449,20 +505,24 @@ const MerchantServer = () => {
                         className="border-b border-gray-200 hover:bg-gray-50"
                       >
                         <td className="p-3 border border-gray-200">#{order.order_id}</td>
-                        <td className="p-3 border border-gray-200">{order.service_id || '-'}</td>
+                        <td className="p-3 border border-gray-200">
+                          {allServicesMap[order.service_id] || `服务ID: ${order.service_id}`}
+                        </td>
                         <td className="p-3 border border-gray-200">
                           {order.reserve_time
-                            ? new Date(order.reserve_time).toLocaleDateString()
+                            ? new Date(order.reserve_time).toLocaleString()
                             : '-'}
                         </td>
                         <td className="p-3 border border-gray-200">
                           <span
                             className={`px-2 py-1 rounded text-sm font-medium ${
-                              order.order_status === 'completed'
+                              order.order_status === '已完成'
                                 ? 'bg-green-100 text-green-600'
-                                : order.order_status === 'pending'
+                                : order.order_status === '待确认'
                                   ? 'bg-blue-100 text-blue-600'
-                                  : 'bg-yellow-100 text-yellow-600'
+                                  : order.order_status === '已确认'
+                                    ? 'bg-yellow-100 text-yellow-600'
+                                    : 'bg-gray-100 text-gray-600'
                             }`}
                           >
                             {order.order_status || '未知'}
@@ -471,7 +531,7 @@ const MerchantServer = () => {
                         <td className="p-3 border border-gray-200">
                           <span
                             className={`px-2 py-1 rounded text-sm font-medium ${
-                              order.pay_status === 'paid'
+                              order.pay_status === '已支付'
                                 ? 'bg-green-100 text-green-600'
                                 : 'bg-red-100 text-red-600'
                             }`}
@@ -480,9 +540,30 @@ const MerchantServer = () => {
                           </span>
                         </td>
                         <td className="p-3 border border-gray-200">
-                          <Button type="link" size="small">
-                            详情
-                          </Button>
+                          <div className="flex gap-2 justify-center">
+                            {order.order_status === '待确认' && (
+                              <Button
+                                type="primary"
+                                size="small"
+                                onClick={() => handleConfirmOrder(order.order_id)}
+                              >
+                                确认
+                              </Button>
+                            )}
+                            {order.order_status === '已确认' && (
+                              <Button
+                                type="primary"
+                                size="small"
+                                className="bg-green-500 border-green-500"
+                                onClick={() => handleCompleteOrder(order.order_id)}
+                              >
+                                完成
+                              </Button>
+                            )}
+                            <Button type="link" size="small">
+                              详情
+                            </Button>
+                          </div>
                         </td>
                       </tr>
                     ))}

@@ -1,7 +1,25 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { message, Form, Select, DatePicker, Modal, Input, Button, Table, Tabs, Descriptions, Tag, Spin, Typography, Switch, Radio, Avatar, Empty } from 'antd';
+import {
+  message,
+  Form,
+  Select,
+  DatePicker,
+  Modal,
+  Input,
+  Button,
+  Table,
+  Tabs,
+  Descriptions,
+  Tag,
+  Spin,
+  Typography,
+  Switch,
+  Radio,
+  Avatar,
+  Empty,
+} from 'antd';
 const { Title, Text } = Typography;
 import icon from '../assets/icon.png';
 import 'antd/dist/reset.css';
@@ -16,37 +34,41 @@ interface UserProfile {
   username: string;
   user_type: number; // 0=管理员、1=老人、2=家属、3=服务商
   is_active: boolean;
-  phone: string;
-  email?: string;
-  last_login_at?: string;
-  created_at?: string;
-  elderly_id?: number;
-  family_id?: number;
-  provider_id?: number;
-  real_name?: string;
-  gender?: string;
-  age?: number;
-  address?: string;
+  phone?: string;
 }
 
 interface Elderly {
-  id?: number;
+  elderly_id: number;
+  user_id: number;
   name: string;
   id_card: string;
-  age?: number;
+  age: number;
   health_level: string;
   emergency_contact: string;
   address: string;
+  register_time: string;
 }
 
-interface HealthRecord {
-  id: number;
-  elderly_id: number;
-  monitor_type: string;
-  monitor_value: number;
-  monitor_time: string;
-  is_abnormal: number; // 0=正常, 1=异常
-  device_id: string;
+interface FamilyMember {
+  family_id: number;
+  user_id: number;
+  name: string;
+  phone: string;
+  relation: string;
+  permission_level: string;
+  elderly_id?: number;
+}
+
+interface Provider {
+  provider_id: number;
+  user_id: number;
+  name: string;
+  service_type: string;
+  service_nature: string;
+  qualification_id: string;
+  contact: string;
+  audit_status: string;
+  belong_community: string;
 }
 
 interface Alert {
@@ -55,14 +77,20 @@ interface Alert {
   monitor_type: string;
   monitor_value: number;
   monitor_time: string;
-  ack_status: string; // pending, acked
+  device_id: string;
+  global_abnormal: number;
+  personal_abnormal: number;
+  score?: number;
+  confidence?: number;
+  k?: number;
+  n?: number;
+  mu?: number;
+  sigma?: number;
+  ack_status: string;
   ack_time?: string;
-  is_abnormal?: number;
-}
-
-interface Provider {
-  provider_id: number;
-  name: string;
+  silence_until?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface EdgeBaseline {
@@ -77,7 +105,7 @@ interface EdgeBaseline {
 }
 
 interface ServiceItem {
-  service_id?: number;
+  service_id: number;
   provider_id: number;
   name: string;
   content: string;
@@ -87,38 +115,39 @@ interface ServiceItem {
   status: string;
 }
 
-interface ElderlyListResponse {
-  total: number;
-  data: Elderly[];
-}
-
 interface ServiceOrder {
-  order_id?: number;
-  elderly_id?: number;
-  service_id?: number;
-  reserve_time?: string;
-  service_time?: string;
-  order_status?: string;
-  pay_status?: string;
+  order_id: number;
+  elderly_id: number;
+  service_id: number;
+  reserve_time: string;
+  service_time: string;
+  order_status: string;
+  pay_status: string;
   eval_score?: number;
   eval_content?: string;
   eval_time?: string;
-}
-
-interface OrderListResponse {
-  total: number;
-  offset: number;
-  limit: number;
-  items: ServiceOrder[];
+  // Optional for frontend display convenience if joined
+  service_item?: ServiceItem;
+  elderly?: Elderly;
 }
 
 interface AccessRecord {
-  access_id?: number;
-  elderly_id?: number;
-  access_type?: string; // IN | OUT
-  record_time?: string;
-  gate_location?: string;
-  is_abnormal?: string; // YES | NO
+  access_id: number;
+  elderly_id: number;
+  access_type: string;
+  record_time: string;
+  gate_location: string;
+  is_abnormal: string;
+}
+
+interface HealthRecord {
+  record_id: number;
+  elderly_id: number;
+  monitor_type: string;
+  monitor_value: number;
+  monitor_time: string;
+  is_abnormal: number; // 0 or 1
+  device_id: string;
 }
 
 interface AccessRecordListResponse {
@@ -128,9 +157,14 @@ interface AccessRecordListResponse {
   items: AccessRecord[];
 }
 
+interface OrderListResponse {
+  total: number;
+  offset: number;
+  limit: number;
+  items: ServiceOrder[];
+}
+
 type SidebarOption =
-  | 'userInfo'
-  | 'userProfile'
   | 'orderManage'
   | 'accessRecord'
   | 'healthRecord'
@@ -139,12 +173,10 @@ type SidebarOption =
   | 'aiAnalysis'
   | 'settings';
 type AiSubFunction = 'demandAnalysis' | 'satisfaction' | 'recommendation' | 'consumptionTrend';
-type AiAgent = 'qwen' | 'chatgpt' | 'ernie' | 'gemini';
 
 // ========== 静态配置 ==========
 const sidebarOptions = [
   { key: 'userInfo' as SidebarOption, label: '用户基本信息' },
-  { key: 'userProfile' as SidebarOption, label: '用户详细档案' },
   { key: 'orderManage' as SidebarOption, label: '我的订单' },
   { key: 'healthRecord' as SidebarOption, label: '健康档案' },
   { key: 'alerts' as SidebarOption, label: '预警消息' },
@@ -211,6 +243,7 @@ const Profile = () => {
   const [orderPageSize] = useState<number>(20);
   const [showOrderModal, setShowOrderModal] = useState<boolean>(false);
   const [serviceList, setServiceList] = useState<ServiceItem[]>([]);
+  const [allServicesMap, setAllServicesMap] = useState<Record<number, string>>({});
   const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
   const [orderForm] = Form.useForm();
   const [serviceLoading, setServiceLoading] = useState<boolean>(false);
@@ -371,12 +404,31 @@ const Profile = () => {
       handleGetElderlyList();
     }
     // 如果是家属，且点击了需要老人列表的页，确保加载了家属关联的老人
-    if (userData?.user_type === 2 && (option === 'accessRecord' || option === 'healthRecord' || option === 'alerts' || option === 'orderManage')) {
+    if (
+      userData?.user_type === 2 &&
+      (option === 'accessRecord' ||
+        option === 'healthRecord' ||
+        option === 'alerts' ||
+        option === 'orderManage')
+    ) {
       if (familyElders.length === 0) {
         handleGetFamilyElders();
       }
     }
   };
+
+  // 当切换到订单管理时，获取服务列表以便显示服务名称
+  useEffect(() => {
+    if (activeOption === 'orderManage' && serviceList.length === 0) {
+      // 获取所有服务（这里假设可以不传provider_id获取所有，或者需要逐个获取）
+      // 由于API限制，可能需要先获取provider列表再获取服务，或者后端提供直接获取所有服务的接口
+      // 暂时先尝试获取服务商列表，然后获取第一个服务商的服务作为示例，或者只显示ID
+      // 为了更好的体验，最好有一个获取所有服务的接口。
+      // 如果没有，我们暂时只显示ID，或者在点击详情时加载。
+      // 这里暂时尝试获取服务商列表，不做过多复杂操作以免报错。
+      handleGetProviderList(); 
+    }
+  }, [activeOption]);
 
   // 计算当前可用的老人列表（管理员用全量，家属用关联）
   const getAvailableElders = () => {
@@ -429,27 +481,31 @@ const Profile = () => {
   };
 
   // ========== 订单管理增删改查 ==========
-  const handleGetOrderList = async (page: number = 1, pageSize: number = 20, elderlyId?: number) => {
+  const handleGetOrderList = async (
+    page: number = 1,
+    pageSize: number = 20,
+    elderlyId?: number
+  ) => {
     // 逻辑同其他列表：老人看自己，家属/管理员看选定
     let targetElderlyId = elderlyId;
     if (!targetElderlyId) {
-      if (userData?.user_type === 1 && userData?.elderly_id) {
-        targetElderlyId = userData.elderly_id;
+      if (userData?.user_type === 1 && elderlyDetail?.elderly_id) {
+        targetElderlyId = elderlyDetail.elderly_id;
       } else if (selectedElderlyId) {
         targetElderlyId = selectedElderlyId;
       } else if (isAdmin) {
-          // 管理员默认看所有
-          targetElderlyId = undefined; 
+        // 管理员默认看所有
+        targetElderlyId = undefined;
       } else {
-         // 家属如果没有选定老人，则暂不显示或提示
-         // 这里我们简单处理：如果没有选定，就不传ID（后端可能返回空或报错，视API而定）
-         // 但通常家属应该先选老人。
-         if (activeOption === 'orderManage') {
-             // 只有在当前标签页才提示
-             // setOrderError('请先选择一个老人');
-         }
-         // 暂时允许为空，让后端处理
-         targetElderlyId = undefined;
+        // 家属如果没有选定老人，则暂不显示或提示
+        // 这里我们简单处理：如果没有选定，就不传ID（后端可能返回空或报错，视API而定）
+        // 但通常家属应该先选老人。
+        if (activeOption === 'orderManage') {
+          // 只有在当前标签页才提示
+          // setOrderError('请先选择一个老人');
+        }
+        // 暂时允许为空，让后端处理
+        targetElderlyId = undefined;
       }
     }
 
@@ -461,7 +517,7 @@ const Profile = () => {
       if (targetElderlyId) {
         params.elderly_id = targetElderlyId;
       }
-      
+
       const response = await api.get('/orders/', { params });
       const resData = response.data as OrderListResponse;
       setOrderList(resData.items || []);
@@ -481,10 +537,58 @@ const Profile = () => {
     }
   };
 
+  // 创建订单
+  const handleCreateOrder = async () => {
+    try {
+      const values = await orderForm.validateFields();
+      
+      // Determine elderly_id
+      let eid = values.elderly_id;
+      // If user is elderly(1), use their own id
+      if (userData?.user_type === 1 && elderlyDetail?.elderly_id) {
+        eid = elderlyDetail.elderly_id;
+      }
+
+      if (!eid) {
+         message.warning('请选择服务对象');
+         return;
+      }
+
+      if (!selectedService) {
+        message.warning('请选择服务项目');
+        return;
+      }
+
+      setOrderLoading(true);
+      const payload = {
+        elderly_id: eid,
+        service_id: selectedService.service_id!,
+        reserve_time: values.reserve_time.format('YYYY-MM-DD HH:mm:ss'),
+        service_time: values.reserve_time.format('YYYY-MM-DD HH:mm:ss'), 
+        order_status: '待确认',
+        pay_status: '未支付'
+      };
+
+      await api.post('/orders/', payload);
+      message.success('预约成功');
+      setShowOrderModal(false);
+      orderForm.resetFields();
+      setSelectedService(null);
+      handleGetOrderList(orderPage);
+    } catch (err) {
+      console.error(err);
+      message.error('预约失败');
+    } finally {
+      setOrderLoading(false);
+    }
+  };
+
   // 获取服务商列表
   const handleGetProviderList = async () => {
     try {
-      const response = await api.get('/providers/', { params: { audit_status: 'approved', offset: 0, limit: 100 } });
+      const response = await api.get('/providers/', {
+        params: { audit_status: 'approved', offset: 0, limit: 100 },
+      });
       setProviderList(response.data.items || []);
     } catch (err) {
       console.error('获取服务商列表失败', err);
@@ -495,28 +599,32 @@ const Profile = () => {
   const handleGetServiceList = async (providerId?: number) => {
     const pid = providerId || selectedProviderId;
     if (!pid) {
-        // 如果没有选定服务商，先尝试获取服务商列表，并选中第一个
-        if (providerList.length === 0) {
-            await handleGetProviderList();
-            // 这里不能立即拿到providerList更新后的值，所以可能需要用户手动选
-            // 或者我们再次获取一下
-            try {
-                const pRes = await api.get('/providers/', { params: { audit_status: 'approved', offset: 0, limit: 1 } });
-                const items = pRes.data.items || [];
-                if (items.length > 0) {
-                    setProviderList(items); // 只是为了更新状态
-                    setSelectedProviderId(items[0].provider_id);
-                    // 递归调用一次
-                    return handleGetServiceList(items[0].provider_id);
-                }
-            } catch {}
-        }
-        return; 
+      // 如果没有选定服务商，先尝试获取服务商列表，并选中第一个
+      if (providerList.length === 0) {
+        await handleGetProviderList();
+        // 这里不能立即拿到providerList更新后的值，所以可能需要用户手动选
+        // 或者我们再次获取一下
+        try {
+          const pRes = await api.get('/providers/', {
+            params: { audit_status: 'approved', offset: 0, limit: 1 },
+          });
+          const items = pRes.data.items || [];
+          if (items.length > 0) {
+            setProviderList(items); // 只是为了更新状态
+            setSelectedProviderId(items[0].provider_id);
+            // 递归调用一次
+            return handleGetServiceList(items[0].provider_id);
+          }
+        } catch {}
+      }
+      return;
     }
 
     try {
       setServiceLoading(true);
-      const response = await api.get('/services/', { params: { provider_id: pid, offset: 0, limit: 100 } });
+      const response = await api.get('/services/', {
+        params: { provider_id: pid, offset: 0, limit: 100 },
+      });
       setServiceList(response.data.items || []);
     } catch (err) {
       console.error('获取服务列表失败', err);
@@ -528,62 +636,33 @@ const Profile = () => {
   // 获取基准数据
   const handleGetBaseline = async (elderlyId: number, monitorType: string) => {
     try {
-        setBaselineLoading(true);
-        setShowBaselineModal(true);
-        const response = await api.get('/edge/baseline', {
-            params: { elderly_id: elderlyId, monitor_type: monitorType }
-        });
-        setBaselineData(response.data);
+      setBaselineLoading(true);
+      setShowBaselineModal(true);
+      const response = await api.get('/edge/baseline', {
+        params: { elderly_id: elderlyId, monitor_type: monitorType },
+      });
+      setBaselineData(response.data);
     } catch (err) {
-        // message.info('该监测类型暂无基准数据');
-        setBaselineData(null); // Clear data on error
+      // message.info('该监测类型暂无基准数据');
+      setBaselineData(null); // Clear data on error
     } finally {
-        setBaselineLoading(false);
+      setBaselineLoading(false);
     }
   };
 
   // 获取家属关联的老人
   const handleGetFamilyElders = async () => {
     try {
-        const response = await api.get('/families/by-account/elders');
-        setFamilyElders(response.data.items || []);
-        // 同时更新monitorElderlyList以便复用展示逻辑
-        setMonitorElderlyList(response.data.items || []);
+      const response = await api.get('/families/by-account/elders');
+      setFamilyElders(response.data.items || []);
+      // 同时更新monitorElderlyList以便复用展示逻辑
+      setMonitorElderlyList(response.data.items || []);
     } catch (err) {
-        console.error('获取关联老人失败', err);
+      console.error('获取关联老人失败', err);
     }
   };
 
-  // 创建订单
-  const handleCreateOrder = async (values: any) => {
-    try {
-      // 必须有 elderly_id
-      let targetElderlyId = userData?.elderly_id;
-      if (!targetElderlyId && selectedElderlyId) {
-        targetElderlyId = selectedElderlyId;
-      }
-      if (!targetElderlyId) {
-        message.error('未识别到老人身份，无法下单');
-        return;
-      }
 
-      await api.post('/orders/', {
-        elderly_id: targetElderlyId,
-        service_id: values.service_id,
-        reserve_time: values.reserve_time.format('YYYY-MM-DD HH:mm:ss'),
-        service_time: values.reserve_time.format('YYYY-MM-DD HH:mm:ss'), // 简化，设为相同
-        order_status: 'pending',
-        pay_status: 'unpaid',
-      });
-      message.success('下单成功');
-      setShowOrderModal(false);
-      orderForm.resetFields();
-      handleGetOrderList(1, orderPageSize, targetElderlyId);
-    } catch (err) {
-      message.error('下单失败');
-      console.error(err);
-    }
-  };
 
   // 确认订单
   const handleConfirmOrder = async (orderId: number) => {
@@ -621,9 +700,27 @@ const Profile = () => {
     }
   };
 
-  // 当切换到订单管理时加载订单列表
+  // 获取所有服务项目（用于显示名称）
+  const handleGetAllServices = async () => {
+    try {
+      const response = await api.get('/services/', {
+        params: { offset: 0, limit: 1000 },
+      });
+      const items = (response.data.items || []) as ServiceItem[];
+      const mapping: Record<number, string> = {};
+      items.forEach((item) => {
+        mapping[item.service_id] = item.name;
+      });
+      setAllServicesMap(mapping);
+    } catch (err) {
+      console.error('获取所有服务失败', err);
+    }
+  };
+
+  // 当切换到订单管理时加载订单列表和所有服务
   useEffect(() => {
     if (activeOption === 'orderManage' && isLoggedIn) {
+      handleGetAllServices();
       handleGetOrderList();
     }
   }, [activeOption, isLoggedIn]);
@@ -637,9 +734,9 @@ const Profile = () => {
     // 如果是老人用户，自动使用其elderly_id；否则使用选定的elderly_id
     let targetElderlyId = elderlyId;
     if (!targetElderlyId) {
-      if (userData?.user_type === 1 && elderlyDetail?.id) {
+      if (userData?.user_type === 1 && elderlyDetail?.elderly_id) {
         // 老人用户（通过 /elders/me 获取到的实体）
-        targetElderlyId = elderlyDetail.id as number;
+        targetElderlyId = elderlyDetail.elderly_id as number;
       } else if (selectedElderlyId) {
         // 非老人但已选择老人
         targetElderlyId = selectedElderlyId;
@@ -682,11 +779,11 @@ const Profile = () => {
   useEffect(() => {
     if (activeOption === 'accessRecord' && isLoggedIn) {
       // 如果是老人，自动加载；如果需要选择老人则提示
-      if (userData?.user_type === 1 && elderlyDetail?.id) {
+      if (userData?.user_type === 1 && elderlyDetail?.elderly_id) {
         // 直接调用 API 获取进出记录
         (async () => {
           const offset = 0;
-          const targetElderlyId = elderlyDetail.id as number;
+          const targetElderlyId = elderlyDetail.elderly_id as number;
           try {
             setAccessLoading(true);
             setAccessError('');
@@ -719,31 +816,28 @@ const Profile = () => {
         setAccessError('请先从系统设置中选择一个老人');
       }
     }
-  }, [
-    activeOption,
-    isLoggedIn,
-    userData?.user_type,
-    elderlyDetail?.id,
-    isAdmin,
-    accessPageSize,
-  ]);
+  }, [activeOption, isLoggedIn, userData?.user_type, elderlyDetail?.id, isAdmin, accessPageSize]);
 
   // ========== 预警消息管理 ==========
-  const handleGetAlertList = async (page: number = 1, pageSize: number = 20, elderlyId?: number) => {
+  const handleGetAlertList = async (
+    page: number = 1,
+    pageSize: number = 20,
+    elderlyId?: number
+  ) => {
     // 逻辑同进出记录：老人看自己，家属/管理员看选定
     let targetElderlyId = elderlyId;
     if (!targetElderlyId) {
-      if (userData?.user_type === 1 && userData?.elderly_id) {
-        targetElderlyId = userData.elderly_id;
+      if (userData?.user_type === 1 && elderlyDetail?.elderly_id) {
+        targetElderlyId = elderlyDetail.elderly_id;
       } else if (selectedElderlyId) {
         targetElderlyId = selectedElderlyId;
       } else if (isAdmin) {
-          // 管理员如果没有选定，则不传ID查看所有？或者提示
-          // 后端允许不传ID查看所有
-          targetElderlyId = undefined; 
+        // 管理员如果没有选定，则不传ID查看所有？或者提示
+        // 后端允许不传ID查看所有
+        targetElderlyId = undefined;
       } else {
-         setAlertError('请先选择一个老人');
-         return;
+        setAlertError('请先选择一个老人');
+        return;
       }
     }
 
@@ -776,21 +870,25 @@ const Profile = () => {
   };
 
   const handleAckAlert = async (alertId: number) => {
-      try {
-          await api.patch(`/alerts/${alertId}/ack`);
-          message.success('已确认处理');
-          handleGetAlertList(alertPage, alertPageSize, selectedElderlyId || undefined);
-      } catch {
-          message.error('操作失败');
-      }
-  }
+    try {
+      await api.patch(`/alerts/${alertId}/ack`);
+      message.success('已确认处理');
+      handleGetAlertList(alertPage, alertPageSize, selectedElderlyId || undefined);
+    } catch {
+      message.error('操作失败');
+    }
+  };
 
   // ========== 健康档案管理 ==========
-  const handleGetHealthList = async (page: number = 1, pageSize: number = 20, elderlyId?: number) => {
+  const handleGetHealthList = async (
+    page: number = 1,
+    pageSize: number = 20,
+    elderlyId?: number
+  ) => {
     let targetElderlyId = elderlyId;
     if (!targetElderlyId) {
-      if (userData?.user_type === 1 && userData?.elderly_id) {
-        targetElderlyId = userData.elderly_id;
+      if (userData?.user_type === 1 && elderlyDetail?.elderly_id) {
+        targetElderlyId = elderlyDetail.elderly_id;
       } else if (selectedElderlyId) {
         targetElderlyId = selectedElderlyId;
       } else {
@@ -830,33 +928,33 @@ const Profile = () => {
   // 监听Tab切换
   useEffect(() => {
     if (activeOption === 'healthRecord' && isLoggedIn) {
-        // 如果是老人，自动加载
-        if (userData?.user_type === 1) {
-            handleGetHealthList();
-        } else if (userData?.user_type === 0 && !selectedElderlyId) {
-            // 管理员需要选人，先不自动加载
-            setHealthError('请先从上方选择一个老人');
-        } else if (selectedElderlyId) {
-            handleGetHealthList(1, 20, selectedElderlyId);
-        }
+      // 如果是老人，自动加载
+      if (userData?.user_type === 1) {
+        handleGetHealthList();
+      } else if (userData?.user_type === 0 && !selectedElderlyId) {
+        // 管理员需要选人，先不自动加载
+        setHealthError('请先从上方选择一个老人');
+      } else if (selectedElderlyId) {
+        handleGetHealthList(1, 20, selectedElderlyId);
+      }
     }
     if (activeOption === 'alerts' && isLoggedIn) {
-        // 预警消息逻辑类似
-        if (userData?.user_type === 1 || userData?.user_type === 0) {
-             // 老人看自己，管理员看全部(默认)或选定
-            handleGetAlertList();
-        } else if (selectedElderlyId) {
-            handleGetAlertList(1, 20, selectedElderlyId);
-        }
+      // 预警消息逻辑类似
+      if (userData?.user_type === 1 || userData?.user_type === 0) {
+        // 老人看自己，管理员看全部(默认)或选定
+        handleGetAlertList();
+      } else if (selectedElderlyId) {
+        handleGetAlertList(1, 20, selectedElderlyId);
+      }
     }
     if (activeOption === 'orderManage' && isLoggedIn) {
-        handleGetProviderList();
-        // 自动加载订单
-        if (userData?.user_type === 1 && userData?.elderly_id) {
-            handleGetOrderList(1, 20, userData.elderly_id);
-        } else if (selectedElderlyId) {
-            handleGetOrderList(1, 20, selectedElderlyId);
-        }
+      handleGetProviderList();
+      // 自动加载订单
+      if (userData?.user_type === 1 && elderlyDetail?.elderly_id) {
+        handleGetOrderList(1, 20, elderlyDetail.elderly_id);
+      } else if (selectedElderlyId) {
+        handleGetOrderList(1, 20, selectedElderlyId);
+      }
     }
   }, [activeOption, isLoggedIn, userData, selectedElderlyId]);
 
@@ -907,7 +1005,7 @@ const Profile = () => {
       // 创建家族成员关系
       await api.post('/families/members', {
         user_id: userData?.id,
-        elderly_id: selectedElderlyForAdd.id,
+        elderly_id: selectedElderlyForAdd.elderly_id,
         name: userData?.username || '家属',
         phone: userData?.phone || '',
         relation: relationInput.trim(),
@@ -1220,54 +1318,32 @@ const Profile = () => {
           <div className="w-full h-full flex flex-col items-center p-6">
             <h2 className="text-2xl font-bold text-[#1E90FF] mb-6">用户基本信息</h2>
             <div className="w-4/5 bg-white rounded-xl shadow-md p-6">
-              <div className="flex items-center mb-4">
-                <span className="w-32 text-gray-600">用户名：</span>
-                <span className="font-medium">{userData.username || '未知'}</span>
-              </div>
-              <div className="flex items-center mb-4">
-                <span className="w-32 text-gray-600">手机号：</span>
-                <span className="font-medium">{userData.phone || '未绑定'}</span>
-              </div>
-              <div className="flex items-center mb-4">
-                <span className="w-32 text-gray-600">邮箱：</span>
-                <span className="font-medium">{userData.email || '未绑定'}</span>
-              </div>
-              <div className="flex items-center mb-4">
-                <span className="w-32 text-gray-600">身份类型：</span>
-                <span className="font-medium">
-                  {userData.user_type === 0
-                    ? '管理员'
-                    : userData.user_type === 1
-                      ? '老人'
-                      : userData.user_type === 2
-                        ? '家属'
-                        : userData.user_type === 3
-                          ? '服务商'
-                          : '其他'}
-                </span>
-              </div>
-              <div className="flex items-center mb-4">
-                <span className="w-32 text-gray-600">账号状态：</span>
-                <span className="font-medium text-green-600">
-                  {userData.is_active ? '正常' : '已禁用'}
-                </span>
-              </div>
-              <div className="flex items-center">
-                <span className="w-32 text-gray-600">注册时间：</span>
-                <span className="font-medium">
-                  {userData.created_at
-                    ? new Date(userData.created_at).toLocaleDateString()
-                    : '未知'}
-                </span>
-              </div>
+              {/* 按身份展示对应表的基本信息 */}
               {userData.user_type === 0 && (
-                <div className="mt-6 p-3 bg-[#EBF5FF] rounded-lg text-[#1E90FF] text-sm">
-                  ✅ 您是管理员，可在【系统设置】中管理老人信息
+                <div className="mt-6 grid grid-cols-2 gap-4 border-t pt-4">
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">用户名：</span>
+                    <span className="font-medium">{userData.username}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">角色：</span>
+                    <span className="font-medium">系统管理员</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">账号状态：</span>
+                    <span className="font-medium text-green-600">
+                      {userData.is_active ? '正常' : '已禁用'}
+                    </span>
+                  </div>
                 </div>
               )}
-              {/* 按身份展示对应表的基本信息 */}
+
               {userData.user_type === 1 && elderlyDetail && (
                 <div className="mt-6 grid grid-cols-2 gap-4 border-t pt-4">
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">用户名：</span>
+                    <span className="font-medium">{userData.username}</span>
+                  </div>
                   <div className="flex items-center">
                     <span className="w-32 text-gray-600">姓名：</span>
                     <span className="font-medium">{elderlyDetail.name || '未填写'}</span>
@@ -1286,17 +1362,37 @@ const Profile = () => {
                   </div>
                   <div className="flex items-center">
                     <span className="w-32 text-gray-600">紧急联系人：</span>
-                    <span className="font-medium">{elderlyDetail.emergency_contact || '未填写'}</span>
+                    <span className="font-medium">
+                      {elderlyDetail.emergency_contact || '未填写'}
+                    </span>
                   </div>
                   <div className="flex items-center">
                     <span className="w-32 text-gray-600">居住地址：</span>
                     <span className="font-medium">{elderlyDetail.address || '未填写'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">账号状态：</span>
+                    <span className="font-medium text-green-600">
+                      {userData.is_active ? '正常' : '已禁用'}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">注册时间：</span>
+                    <span className="font-medium">
+                      {elderlyDetail.register_time
+                        ? new Date(elderlyDetail.register_time).toLocaleDateString()
+                        : '未知'}
+                    </span>
                   </div>
                 </div>
               )}
 
               {userData.user_type === 2 && familyDetail && (
                 <div className="mt-6 grid grid-cols-2 gap-4 border-t pt-4">
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">用户名：</span>
+                    <span className="font-medium">{userData.username}</span>
+                  </div>
                   <div className="flex items-center">
                     <span className="w-32 text-gray-600">姓名：</span>
                     <span className="font-medium">{familyDetail.name || '未填写'}</span>
@@ -1313,11 +1409,21 @@ const Profile = () => {
                     <span className="w-32 text-gray-600">权限等级：</span>
                     <span className="font-medium">{familyDetail.permission_level || '未填写'}</span>
                   </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">账号状态：</span>
+                    <span className="font-medium text-green-600">
+                      {userData.is_active ? '正常' : '已禁用'}
+                    </span>
+                  </div>
                 </div>
               )}
 
               {userData.user_type === 3 && providerDetail && (
                 <div className="mt-6 grid grid-cols-2 gap-4 border-t pt-4">
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">用户名：</span>
+                    <span className="font-medium">{userData.username}</span>
+                  </div>
                   <div className="flex items-center">
                     <span className="w-32 text-gray-600">服务商名称：</span>
                     <span className="font-medium">{providerDetail.name || '未填写'}</span>
@@ -1332,7 +1438,9 @@ const Profile = () => {
                   </div>
                   <div className="flex items-center">
                     <span className="w-32 text-gray-600">资质编号：</span>
-                    <span className="font-medium">{providerDetail.qualification_id || '未填写'}</span>
+                    <span className="font-medium">
+                      {providerDetail.qualification_id || '未填写'}
+                    </span>
                   </div>
                   <div className="flex items-center">
                     <span className="w-32 text-gray-600">联系方式：</span>
@@ -1344,42 +1452,18 @@ const Profile = () => {
                   </div>
                   <div className="flex items-center">
                     <span className="w-32 text-gray-600">所属社区：</span>
-                    <span className="font-medium">{providerDetail.belong_community || '未填写'}</span>
+                    <span className="font-medium">
+                      {providerDetail.belong_community || '未填写'}
+                    </span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">账号状态：</span>
+                    <span className="font-medium text-green-600">
+                      {userData.is_active ? '正常' : '已禁用'}
+                    </span>
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-        );
-      case 'userProfile':
-        return (
-          <div className="w-full h-full flex flex-col items-center p-6">
-            <h2 className="text-2xl font-bold text-[#1E90FF] mb-6">用户详细档案</h2>
-            <div className="w-4/5 bg-white rounded-xl shadow-md p-6">
-              <div className="flex items-center mb-4">
-                <span className="w-32 text-gray-600">真实姓名：</span>
-                <span className="font-medium">{userData.real_name || '未填写'}</span>
-              </div>
-              <div className="flex items-center mb-4">
-                <span className="w-32 text-gray-600">性别：</span>
-                <span className="font-medium">{userData.gender || '未填写'}</span>
-              </div>
-              <div className="flex items-center mb-4">
-                <span className="w-32 text-gray-600">年龄：</span>
-                <span className="font-medium">{userData.age || '未填写'}</span>
-              </div>
-              <div className="flex items-center mb-4">
-                <span className="w-32 text-gray-600">居住地址：</span>
-                <span className="font-medium">{userData.address || '未填写'}</span>
-              </div>
-              <div className="flex items-center mb-4">
-                <span className="w-32 text-gray-600">最后登录：</span>
-                <span className="font-medium">
-                  {userData.last_login_at
-                    ? new Date(userData.last_login_at).toLocaleString()
-                    : '从未登录'}
-                </span>
-              </div>
             </div>
           </div>
         );
@@ -1389,12 +1473,12 @@ const Profile = () => {
             <h2 className="text-2xl font-bold text-[#1E90FF] mb-6">我的订单</h2>
             <div className="w-4/5 bg-white rounded-xl shadow-md p-6">
               <div className="flex justify-end mb-4">
-                 <button 
-                   onClick={() => setShowOrderModal(true)}
-                   className="px-4 py-2 bg-[#1E90FF] text-white rounded hover:bg-blue-600"
-                 >
-                   + 预约新服务
-                 </button>
+                <button
+                  onClick={() => setShowOrderModal(true)}
+                  className="px-4 py-2 bg-[#1E90FF] text-white rounded hover:bg-blue-600"
+                >
+                  + 预约新服务
+                </button>
               </div>
               {orderLoading ? (
                 <div className="text-center py-8">加载中...</div>
@@ -1421,33 +1505,45 @@ const Profile = () => {
                         className="border-b border-gray-200 hover:bg-gray-50"
                       >
                         <td className="p-3 border border-gray-200">#{order.order_id}</td>
-                        <td className="p-3 border border-gray-200">{order.service_id || '-'}</td>
+                        <td className="p-3 border border-gray-200">
+                          {allServicesMap[order.service_id] || `服务ID: ${order.service_id}`}
+                        </td>
                         <td className="p-3 border border-gray-200">
                           {order.reserve_time
-                            ? new Date(order.reserve_time).toLocaleDateString()
+                            ? new Date(order.reserve_time).toLocaleString()
                             : '-'}
                         </td>
                         <td className="p-3 border border-gray-200">
-                          {(() => {
-                            const zh = order.order_status || '';
-                            const en = zh === '已完成' ? 'completed' : zh === '已确认' ? 'confirmed' : zh === '待确认' ? 'pending' : 'unknown';
-                            const cls = en === 'completed' ? 'bg-green-100 text-green-600' : en === 'pending' ? 'bg-blue-100 text-blue-600' : en === 'confirmed' ? 'bg-yellow-100 text-yellow-600' : 'bg-gray-100 text-gray-600';
-                            const label = zh || '未知';
-                            return <span className={`px-2 py-1 rounded text-sm font-medium ${cls}`}>{label}</span>;
-                          })()}
+                          <span
+                            className={`px-2 py-1 rounded text-sm font-medium ${
+                              order.order_status === '已完成'
+                                ? 'bg-green-100 text-green-600'
+                                : order.order_status === '待确认'
+                                  ? 'bg-blue-100 text-blue-600'
+                                  : order.order_status === '已确认'
+                                    ? 'bg-yellow-100 text-yellow-600'
+                                    : 'bg-gray-100 text-gray-600'
+                            }`}
+                          >
+                            {order.order_status || '未知'}
+                          </span>
                         </td>
                         <td className="p-3 border border-gray-200">
-                          {(() => {
-                            const zh = order.pay_status || '';
-                            const en = zh === '已支付' ? 'paid' : zh === '未支付' ? 'unpaid' : 'unknown';
-                            const cls = en === 'paid' ? 'bg-green-100 text-green-600' : en === 'unpaid' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600';
-                            const label = zh || '未知';
-                            return <span className={`px-2 py-1 rounded text-sm font-medium ${cls}`}>{label}</span>;
-                          })()}
+                          <span
+                            className={`px-2 py-1 rounded text-sm font-medium ${
+                              order.pay_status === '已支付'
+                                ? 'bg-green-100 text-green-600'
+                                : order.pay_status === '未支付'
+                                  ? 'bg-red-100 text-red-600'
+                                  : 'bg-gray-100 text-gray-600'
+                            }`}
+                          >
+                            {order.pay_status || '未知'}
+                          </span>
                         </td>
                         <td className="p-3 border border-gray-200">
                           <div className="flex gap-2 justify-center">
-                            {order.order_status === 'pending' && (
+                            {order.order_status === '待确认' && (
                               <button
                                 onClick={() => order.order_id && handleConfirmOrder(order.order_id)}
                                 className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
@@ -1455,7 +1551,7 @@ const Profile = () => {
                                 确认
                               </button>
                             )}
-                            {order.order_status === 'confirmed' && (
+                            {order.order_status === '已确认' && (
                               <button
                                 onClick={() =>
                                   order.order_id && handleCompleteOrder(order.order_id)
@@ -1465,7 +1561,7 @@ const Profile = () => {
                                 完成
                               </button>
                             )}
-                            {order.order_status === 'completed' && (
+                            {order.order_status === '已完成' && (
                               <button
                                 onClick={() => {
                                   const score = prompt('请输入评分 (1-5):', '5');
@@ -1503,10 +1599,10 @@ const Profile = () => {
                     上一页
                   </button>
                   <span className="px-3 py-1 text-sm">
-                    {orderPage} / {Math.ceil(totalOrders / orderPageSize) || 1}
+                    第 {orderPage} 页
                   </span>
                   <button
-                    disabled={orderPage >= Math.ceil(totalOrders / orderPageSize) || orderLoading}
+                    disabled={orderList.length < orderPageSize || orderLoading}
                     onClick={() => handleGetOrderList(orderPage + 1, orderPageSize)}
                     className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
                   >
@@ -1521,50 +1617,66 @@ const Profile = () => {
                 <div className="bg-white rounded-xl p-6 w-[500px]">
                   <h4 className="text-lg font-semibold mb-4 text-[#1E90FF]">预约服务</h4>
                   <Form form={orderForm} onFinish={handleCreateOrder} layout="vertical">
-                     <Form.Item label="选择服务商" name="provider_id" required>
-                         <Select 
-                            placeholder="请选择服务商"
-                            onChange={(val) => {
-                                setSelectedProviderId(val);
-                                handleGetServiceList(val);
-                                orderForm.setFieldsValue({ service_id: undefined }); // 重置服务
-                            }}
-                            onDropdownVisibleChange={(open) => {
-                                if (open && providerList.length === 0) {
-                                    handleGetProviderList();
-                                }
-                            }}
-                         >
-                            {providerList.map(p => (
-                                <Select.Option key={p.provider_id} value={p.provider_id}>{p.name}</Select.Option>
-                            ))}
-                         </Select>
-                     </Form.Item>
-                    <Form.Item label="选择服务" name="service_id" rules={[{ required: true, message: '请选择服务' }]}>
+                    <Form.Item label="选择服务商" name="provider_id" required>
+                      <Select
+                        placeholder="请选择服务商"
+                        onChange={(val) => {
+                          setSelectedProviderId(val);
+                          handleGetServiceList(val);
+                          orderForm.setFieldsValue({ service_id: undefined }); // 重置服务
+                        }}
+                        onDropdownVisibleChange={(open) => {
+                          if (open && providerList.length === 0) {
+                            handleGetProviderList();
+                          }
+                        }}
+                      >
+                        {providerList.map((p) => (
+                          <Select.Option key={p.provider_id} value={p.provider_id}>
+                            {p.name}
+                          </Select.Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item
+                      label="选择服务"
+                      name="service_id"
+                      rules={[{ required: true, message: '请选择服务' }]}
+                    >
                       <Select
                         placeholder="请选择服务项目"
                         loading={serviceLoading}
                         onChange={(val) => {
-                          const s = serviceList.find(item => item.service_id === val);
+                          const s = serviceList.find((item) => item.service_id === val);
                           setSelectedService(s || null);
                         }}
                       >
-                        {serviceList.map(s => (
+                        {serviceList.map((s) => (
                           <Select.Option key={s.service_id} value={s.service_id}>
                             {s.name} - ￥{s.price}
                           </Select.Option>
                         ))}
                       </Select>
                     </Form.Item>
-                    
+
                     {selectedService && (
                       <div className="mb-4 p-3 bg-gray-50 rounded">
-                        <p className="text-sm text-gray-600"><strong>内容：</strong>{selectedService.content}</p>
-                        <p className="text-sm text-gray-600"><strong>时长：</strong>{selectedService.duration}</p>
+                        <p className="text-sm text-gray-600">
+                          <strong>内容：</strong>
+                          {selectedService.content}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          <strong>时长：</strong>
+                          {selectedService.duration}
+                        </p>
                       </div>
                     )}
 
-                    <Form.Item label="预约时间" name="reserve_time" rules={[{ required: true, message: '请选择时间' }]}>
+                    <Form.Item
+                      label="预约时间"
+                      name="reserve_time"
+                      rules={[{ required: true, message: '请选择时间' }]}
+                    >
                       <DatePicker showTime className="w-full" />
                     </Form.Item>
 
@@ -1611,14 +1723,14 @@ const Profile = () => {
                       >
                         <option value="">-- 选择老人 --</option>
                         {availableElders.map((elderly) => (
-                          <option key={elderly.id} value={elderly.id}>
+                          <option key={elderly.elderly_id} value={elderly.elderly_id}>
                             {elderly.name}
                           </option>
                         ))}
                       </select>
                     ) : (
                       <button
-                        onClick={() => isAdmin ? handleGetElderlyList() : handleGetFamilyElders()}
+                        onClick={() => (isAdmin ? handleGetElderlyList() : handleGetFamilyElders())}
                         className="px-4 py-2 bg-[#1E90FF] text-white rounded hover:bg-blue-600"
                       >
                         {isAdmin ? '加载老人列表' : '刷新关联老人'}
@@ -1751,14 +1863,14 @@ const Profile = () => {
                       >
                         <option value="">-- 选择老人 --</option>
                         {availableElders.map((elderly) => (
-                          <option key={elderly.id} value={elderly.id}>
+                          <option key={elderly.elderly_id} value={elderly.elderly_id}>
                             {elderly.name}
                           </option>
                         ))}
                       </select>
                     ) : (
                       <button
-                        onClick={() => isAdmin ? handleGetElderlyList() : handleGetFamilyElders()}
+                        onClick={() => (isAdmin ? handleGetElderlyList() : handleGetFamilyElders())}
                         className="px-4 py-2 bg-[#1E90FF] text-white rounded hover:bg-blue-600"
                       >
                         {isAdmin ? '加载老人列表' : '刷新关联老人'}
@@ -1789,8 +1901,8 @@ const Profile = () => {
                     </thead>
                     <tbody>
                       {healthList.map((record) => (
-                        <tr key={record.id} className="border-b border-gray-200 hover:bg-gray-50">
-                          <td className="p-3 border border-gray-200">#{record.id}</td>
+                        <tr key={record.record_id} className="border-b border-gray-200 hover:bg-gray-50">
+                          <td className="p-3 border border-gray-200">#{record.record_id}</td>
                           <td className="p-3 border border-gray-200">{record.monitor_type}</td>
                           <td className="p-3 border border-gray-200">{record.monitor_value}</td>
                           <td className="p-3 border border-gray-200">
@@ -1811,7 +1923,9 @@ const Profile = () => {
                           </td>
                           <td className="p-3 border border-gray-200">
                             <button
-                              onClick={() => handleGetBaseline(record.elderly_id, record.monitor_type)}
+                              onClick={() =>
+                                handleGetBaseline(record.elderly_id, record.monitor_type)
+                              }
                               className="px-2 py-1 bg-indigo-500 text-white text-xs rounded hover:bg-indigo-600"
                             >
                               基准数据
@@ -1823,7 +1937,7 @@ const Profile = () => {
                   </table>
                 </div>
               )}
-               {/* 分页控件 */}
+              {/* 分页控件 */}
               {totalHealth > 0 && (
                 <div className="mt-6 flex items-center justify-between">
                   <div className="text-sm text-gray-600">
@@ -1863,11 +1977,21 @@ const Profile = () => {
                     ) : baselineData ? (
                       baselineData.exists ? (
                         <div className="space-y-3">
-                          <p><strong>监测类型:</strong> {baselineData.monitor_type}</p>
-                          <p><strong>样本数量:</strong> {baselineData.n}</p>
-                          <p><strong>平均值 (μ):</strong> {baselineData.mu?.toFixed(2)}</p>
-                          <p><strong>平均偏差 (mdev):</strong> {baselineData.mdev?.toFixed(2)}</p>
-                          <p><strong>标准差 (σ):</strong> {baselineData.sigma?.toFixed(2)}</p>
+                          <p>
+                            <strong>监测类型:</strong> {baselineData.monitor_type}
+                          </p>
+                          <p>
+                            <strong>样本数量:</strong> {baselineData.n}
+                          </p>
+                          <p>
+                            <strong>平均值 (μ):</strong> {baselineData.mu?.toFixed(2)}
+                          </p>
+                          <p>
+                            <strong>平均偏差 (mdev):</strong> {baselineData.mdev?.toFixed(2)}
+                          </p>
+                          <p>
+                            <strong>标准差 (σ):</strong> {baselineData.sigma?.toFixed(2)}
+                          </p>
                           <div className="p-2 bg-blue-50 rounded text-sm text-blue-700 mt-2">
                             基于边缘计算模型分析，用于异常检测判定。
                           </div>
@@ -1899,8 +2023,8 @@ const Profile = () => {
           <div className="w-full h-full flex flex-col items-center p-6">
             <h2 className="text-2xl font-bold text-[#1E90FF] mb-6">预警消息</h2>
             <div className="w-4/5 bg-white rounded-xl shadow-md p-6">
-               {/* 非老人用户显示老人选择 */}
-               {userData?.user_type !== 1 && (
+              {/* 非老人用户显示老人选择 */}
+              {userData?.user_type !== 1 && (
                 <div className="mb-6 p-4 bg-blue-50 rounded-lg">
                   <p className="text-sm text-gray-600 mb-2">选择老人查看（管理员默认查看所有）</p>
                   <div className="flex gap-2">
@@ -1923,7 +2047,7 @@ const Profile = () => {
                       </select>
                     ) : (
                       <button
-                        onClick={() => isAdmin ? handleGetElderlyList() : handleGetFamilyElders()}
+                        onClick={() => (isAdmin ? handleGetElderlyList() : handleGetFamilyElders())}
                         className="px-4 py-2 bg-[#1E90FF] text-white rounded hover:bg-blue-600"
                       >
                         {isAdmin ? '加载老人列表' : '刷新关联老人'}
@@ -1955,7 +2079,10 @@ const Profile = () => {
                     </thead>
                     <tbody>
                       {alertList.map((alert) => (
-                        <tr key={alert.alert_id} className="border-b border-gray-200 hover:bg-gray-50">
+                        <tr
+                          key={alert.alert_id}
+                          className="border-b border-gray-200 hover:bg-gray-50"
+                        >
                           <td className="p-3 border border-gray-200">#{alert.alert_id}</td>
                           <td className="p-3 border border-gray-200">{alert.elderly_id}</td>
                           <td className="p-3 border border-gray-200">{alert.monitor_type}</td>
@@ -1977,14 +2104,14 @@ const Profile = () => {
                             </span>
                           </td>
                           <td className="p-3 border border-gray-200">
-                             {alert.ack_status !== 'acked' && (
-                                 <button 
-                                    onClick={() => handleAckAlert(alert.alert_id)}
-                                    className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs"
-                                 >
-                                     确认处理
-                                 </button>
-                             )}
+                            {alert.ack_status !== 'acked' && (
+                              <button
+                                onClick={() => handleAckAlert(alert.alert_id)}
+                                className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs"
+                              >
+                                确认处理
+                              </button>
+                            )}
                           </td>
                         </tr>
                       ))}
@@ -1992,7 +2119,7 @@ const Profile = () => {
                   </table>
                 </div>
               )}
-               {/* 分页控件 */}
+              {/* 分页控件 */}
               {totalAlerts > 0 && (
                 <div className="mt-6 flex items-center justify-between">
                   <div className="text-sm text-gray-600">
@@ -2010,9 +2137,7 @@ const Profile = () => {
                       {alertPage} / {Math.ceil(totalAlerts / alertPageSize) || 1}
                     </span>
                     <button
-                      disabled={
-                        alertPage >= Math.ceil(totalAlerts / alertPageSize) || alertLoading
-                      }
+                      disabled={alertPage >= Math.ceil(totalAlerts / alertPageSize) || alertLoading}
                       onClick={() => handleGetAlertList(alertPage + 1, alertPageSize)}
                       className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
                     >
@@ -2488,8 +2613,8 @@ const Profile = () => {
                           </tr>
                         ) : (
                           elderlyList.map((elderly) => (
-                            <tr key={elderly.id} className="border-b border-gray-200">
-                              <td className="p-3 border border-gray-200">{elderly.id}</td>
+                            <tr key={elderly.elderly_id} className="border-b border-gray-200">
+                              <td className="p-3 border border-gray-200">{elderly.elderly_id}</td>
                               <td className="p-3 border border-gray-200">{elderly.name}</td>
                               <td className="p-3 border border-gray-200">{elderly.id_card}</td>
                               <td className="p-3 border border-gray-200">{elderly.health_level}</td>
@@ -2498,14 +2623,14 @@ const Profile = () => {
                               </td>
                               <td className="p-3 border border-gray-200">
                                 <button
-                                  onClick={() => handleGetElderlyDetail(elderly.id!)}
+                                  onClick={() => handleGetElderlyDetail(elderly.elderly_id!)}
                                   className="mr-2 px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
                                   disabled={operateLoading}
                                 >
                                   编辑
                                 </button>
                                 <button
-                                  onClick={() => handleDeleteElderly(elderly.id!)}
+                                  onClick={() => handleDeleteElderly(elderly.elderly_id!)}
                                   className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
                                   disabled={operateLoading}
                                 >

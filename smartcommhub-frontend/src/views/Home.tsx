@@ -1,5 +1,19 @@
 import { useRef } from 'react';
-import { Carousel, Modal, Input, Button, Form, message, Radio, List, Card, Tag, Spin, Select, Typography } from 'antd';
+import {
+  Carousel,
+  Modal,
+  Input,
+  Button,
+  Form,
+  message,
+  Radio,
+  List,
+  Card,
+  Tag,
+  Spin,
+  Select,
+  Typography,
+} from 'antd';
 const { Title } = Typography;
 import 'antd/dist/reset.css';
 import icon from '../assets/icon.png';
@@ -23,7 +37,7 @@ const ROLE_ELDER = 1; // 老人 → 仅个人中心
 const ROLE_FAMILY = 2; // 家属 → 仅个人中心
 const ROLE_MERCHANT = 3; // 运营商 → 仅商户中心
 
-interface Notice {
+export interface Notice {
   notice_id: number;
   community_id: string;
   title: string;
@@ -49,7 +63,14 @@ const Nav = ({ onScrollToNotices }: { onScrollToNotices: () => void }) => {
       <div className="wrapper w-[60%] h-[50px] flex m-auto items-center">
         <ul className="flex leading-[50px] font-semibold justify-evenly text-[17px]">
           <li className="w-[100px] h-[50px] text-center">
-            <a href="#" className="leading-[50px]" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+            <a
+              href="#"
+              className="leading-[50px]"
+              onClick={(e) => {
+                e.preventDefault();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            >
               首页
             </a>
           </li>
@@ -59,7 +80,14 @@ const Nav = ({ onScrollToNotices }: { onScrollToNotices: () => void }) => {
             </a>
           </li>
           <li className="w-[100px] h-[50px] text-center">
-            <a href="#" className="leading-[50px]" onClick={(e) => { e.preventDefault(); onScrollToNotices(); }}>
+            <a
+              href="#"
+              className="leading-[50px]"
+              onClick={(e) => {
+                e.preventDefault();
+                onScrollToNotices();
+              }}
+            >
               新闻资讯
             </a>
           </li>
@@ -118,16 +146,16 @@ const Home = () => {
     const fetchNotices = async () => {
       try {
         setNoticesLoading(true);
-        let targetGroup = targetGroupFilter; // 使用筛选器的值
-        
+        const targetGroup = targetGroupFilter; // 使用筛选器的值
+
         // 如果筛选器是"全部"，则根据角色智能默认，或者确实请求"全部"
         // 这里逻辑改为：默认显示"全部"，但如果用户选择了特定群体，就显示特定的
         // 但是后端API如果不传target_group会报错吗？后端Query(...)是必填
-        
+
         // 自动切换逻辑：如果是初次加载(或重置)，可以根据角色预设
         // 但这里我们简单处理：用户手动选择优先。
         // 为了方便，我们在组件挂载时，根据角色设置一次 targetGroupFilter
-        
+
         const response = await api.get('/notices/', {
           params: {
             target_group: targetGroup,
@@ -191,7 +219,7 @@ const Home = () => {
       const values = await loginForm.validateFields();
       // 用户名前缀校验
       const { username, userType } = values;
-      
+
       // 根据选择的身份进行简单的校验提示（可选，主要为了提升用户体验）
       if (userType === 0 && !username.toLowerCase().includes('admin')) {
         message.warning('提示：管理员账号通常包含 "admin" 前缀');
@@ -228,7 +256,7 @@ const Home = () => {
         message.error('两次密码不一致');
         return;
       }
-      
+
       const ok = await registerApi(values.username, values.password, values.userType, values.phone);
       if (ok) {
         message.success('注册成功！自动登录中...');
@@ -707,8 +735,17 @@ const Home = () => {
 
           <div ref={noticesRef} style={{ marginTop: 24 }}>
             <Spin spinning={noticesLoading}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <Title level={3} style={{ margin: 0 }}>社区公告</Title>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: 16,
+                }}
+              >
+                <Title level={3} style={{ margin: 0 }}>
+                  社区公告
+                </Title>
                 <Select
                   defaultValue="全部"
                   value={targetGroupFilter}
@@ -727,9 +764,18 @@ const Home = () => {
                 dataSource={notices}
                 renderItem={(item) => (
                   <List.Item>
-                    <Card title={item.title} extra={<Tag color="blue">{item.target_group}</Tag>} size="small" hoverable>
-                      <Typography.Paragraph ellipsis={{ rows: 2 }}>{item.content}</Typography.Paragraph>
-                      <div style={{ textAlign: 'right', color: '#999', fontSize: '12px' }}>{item.publish_time}</div>
+                    <Card
+                      title={item.title}
+                      extra={<Tag color="blue">{item.target_group}</Tag>}
+                      size="small"
+                      hoverable
+                    >
+                      <Typography.Paragraph ellipsis={{ rows: 2 }}>
+                        {item.content}
+                      </Typography.Paragraph>
+                      <div style={{ textAlign: 'right', color: '#999', fontSize: '12px' }}>
+                        {item.publish_time}
+                      </div>
                     </Card>
                   </List.Item>
                 )}
@@ -829,7 +875,7 @@ const Home = () => {
             <ul className="flex justify-center items-center">
               <li>
                 <a href="https://developer.mozilla.org/zh-CN/docs/Web/HTML" className="mr-[20px]">
-                  <span className="iconfont icon-html text-3xl! text-orangecolor-600"></span>
+                  <span className="iconfont icon-html text-3xl! text-orange-600"></span>
                 </a>
               </li>
               <li>

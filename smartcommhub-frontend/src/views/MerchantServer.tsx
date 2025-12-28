@@ -48,6 +48,7 @@ const MerchantServer = () => {
   const [provider, setProvider] = useState<Provider | null>(null);
   const [serviceList, setServiceList] = useState<ServiceItem[]>([]);
   const [orderList, setOrderList] = useState<ServiceOrder[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false); // 管理员标识
 
   const [loading, setLoading] = useState(false);
   const [serviceLoading, setServiceLoading] = useState(false);
@@ -79,9 +80,13 @@ const MerchantServer = () => {
         const userRes = await api.get('/auth/profile');
         const userData = userRes.data;
 
-        // 检查用户类型，只有服务商（user_type === 2）才能访问商户中心
-        if (userData?.user_type !== 2) {
-          message.error('只有服务商可以访问商户中心');
+        // 检查用户类型，服务商（user_type === 2）和管理员（user_type === 3）都可以访问
+        if (userData?.user_type === 3) {
+          // 管理员可以访问商户中心
+          setIsAdmin(true);
+        } else if (userData?.user_type !== 2) {
+          // 只有服务商和管理员可以访问商户中心
+          message.error('只有服务商和管理员可以访问商户中心');
           navigate('/', { replace: true });
           return;
         }
@@ -90,7 +95,8 @@ const MerchantServer = () => {
         if (providerId) {
           const res = await api.get(`/providers/${providerId}`);
           setProvider(res.data);
-        } else {
+        } else if (userData?.user_type !== 3) {
+          // 非管理员必须有provider_id
           message.error('未找到关联的商户信息');
         }
       } catch (error) {
@@ -522,9 +528,17 @@ const MerchantServer = () => {
       <header className="w-full bg-[#1E90FF] text-white py-4 px-8">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">智慧社区 - 商户管理中心</h1>
-          <Button type="default" onClick={() => navigate('/')} className="bg-white text-[#1E90FF]">
-            返回首页
-          </Button>
+          <div className="flex gap-3">
+            {/* 管理员专属：快速访问个人中心 */}
+            {isAdmin && (
+              <Button type="default" onClick={() => navigate('/Profile')} className="bg-white text-[#1E90FF]">
+                前往个人中心
+              </Button>
+            )}
+            <Button type="default" onClick={() => navigate('/')} className="bg-white text-[#1E90FF]">
+              返回首页
+            </Button>
+          </div>
         </div>
       </header>
 

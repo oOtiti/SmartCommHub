@@ -83,6 +83,7 @@ type SidebarOption =
   | 'userProfile'
   | 'orderManage'
   | 'accessRecord'
+  | 'elderlyMonitor'
   | 'aiAnalysis'
   | 'settings';
 type AiSubFunction = 'demandAnalysis' | 'satisfaction' | 'recommendation' | 'consumptionTrend';
@@ -160,6 +161,19 @@ const Profile = () => {
   const [accessPage, setAccessPage] = useState<number>(1);
   const [accessPageSize] = useState<number>(20);
   const [selectedElderlyId, setSelectedElderlyId] = useState<number | null>(null);
+
+  // 监测老人相关状态
+  const [monitorSearchKeyword, setMonitorSearchKeyword] = useState<string>('');
+  const [monitorElderlyList, setMonitorElderlyList] = useState<Elderly[]>([]);
+  const [monitorElderlyLoading, setMonitorElderlyLoading] = useState<boolean>(false);
+  const [monitorElderlyError, setMonitorElderlyError] = useState<string>('');
+  const [monitorPage, setMonitorPage] = useState<number>(1);
+  const [monitorPageSize] = useState<number>(10);
+  const [totalMonitorElderly, setTotalMonitorElderly] = useState<number>(0);
+  const [showAddRelationModal, setShowAddRelationModal] = useState<boolean>(false);
+  const [selectedElderlyForAdd, setSelectedElderlyForAdd] = useState<Elderly | null>(null);
+  const [relationInput, setRelationInput] = useState<string>('');
+  const [addingRelation, setAddingRelation] = useState<boolean>(false);
 
   // 其他状态
   const [activeOption, setActiveOption] = useState<SidebarOption>('userInfo');
@@ -380,7 +394,7 @@ const Profile = () => {
       setAccessLoading(true);
       setAccessError('');
       const offset = (page - 1) * pageSize;
-      const response = await api.get('/access-records/', {
+      const response = await api.get('/access/', {
         params: {
           elderly_id: targetElderlyId,
           offset,
@@ -417,7 +431,7 @@ const Profile = () => {
           try {
             setAccessLoading(true);
             setAccessError('');
-            const response = await api.get('/access-records/', {
+            const response = await api.get('/access/', {
               params: {
                 elderly_id: targetElderlyId,
                 offset,
@@ -454,6 +468,68 @@ const Profile = () => {
     isAdmin,
     accessPageSize,
   ]);
+
+  // ========== 监测老人相关函数 ==========
+  const handleSearchElderly = async (keyword: string, page: number = 1) => {
+    try {
+      setMonitorElderlyLoading(true);
+      setMonitorElderlyError('');
+      const response = await api.get('/elders/', {
+        params: {
+          keyword: keyword || undefined,
+          page,
+          size: monitorPageSize,
+        },
+      });
+      const resData = response.data;
+      setMonitorElderlyList(resData.items || []);
+      setTotalMonitorElderly(resData.total || 0);
+      setMonitorPage(page);
+    } catch (err) {
+      setMonitorElderlyList([]);
+      setTotalMonitorElderly(0);
+      if (axios.isAxiosError(err)) {
+        setMonitorElderlyError(err.response?.data?.detail || '搜索老人失败');
+      } else {
+        setMonitorElderlyError('搜索老人失败');
+      }
+    } finally {
+      setMonitorElderlyLoading(false);
+    }
+  };
+
+  const handleAddElderlyRelation = async () => {
+    if (!selectedElderlyForAdd || !relationInput.trim()) {
+      message.error('请选择老人并输入关系');
+      return;
+    }
+
+    try {
+      setAddingRelation(true);
+      // 创建家族成员关系
+      await api.post('/families/members', {
+        elderly_id: selectedElderlyForAdd.id,
+        name: userData?.username || '家属',
+        phone: userData?.phone || '',
+        relation: relationInput.trim(),
+        permission_level: 'view',
+      });
+      message.success('成功添加关联老人！');
+      setShowAddRelationModal(false);
+      setSelectedElderlyForAdd(null);
+      setRelationInput('');
+      // 刷新列表
+      handleSearchElderly(monitorSearchKeyword, monitorPage);
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        message.error(err.response?.data?.detail || '添加老人关联失败');
+      } else {
+        message.error('添加老人关联失败');
+      }
+    } finally {
+      setAddingRelation(false);
+    }
+  };
 
   // ========== 老人管理增删改查 ==========
   const handleGetElderlyList = async (page: number = 1, size: number = 20) => {
@@ -1099,6 +1175,166 @@ const Profile = () => {
             </div>
           </div>
         );
+      case 'elderlyMonitor':
+        return (
+          <div className="w-full h-full flex flex-col items-center p-6">
+            <h2 className="text-2xl font-bold text-[#1E90FF] mb-6">监测老人</h2>
+            <div className="w-4/5 bg-white rounded-xl shadow-md p-6">
+              {/* 搜索框 */}
+              <div className="mb-6 flex gap-2">
+                <input
+                  type="text"
+                  value={monitorSearchKeyword}
+                  onChange={(e) => setMonitorSearchKeyword(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSearchElderly(monitorSearchKeyword, 1);
+                    }
+                  }}
+                  placeholder="搜索老人：输入名字、手机号等关键词"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E90FF]"
+                />
+                <button
+                  onClick={() => handleSearchElderly(monitorSearchKeyword, 1)}
+                  disabled={monitorElderlyLoading}
+                  className="px-6 py-2 bg-[#1E90FF] text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+                >
+                  搜索
+                </button>
+              </div>
+
+              {monitorElderlyError && (
+                <div className="mb-4 p-3 bg-red-50 rounded-lg border border-red-200 text-red-600">
+                  {monitorElderlyError}
+                </div>
+              )}
+
+              {/* 老人列表 */}
+              {monitorElderlyLoading ? (
+                <div className="text-center py-8">加载中...</div>
+              ) : monitorElderlyList.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  {monitorSearchKeyword ? '没有找到匹配的老人' : '请输入关键词搜索老人'}
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto mb-6">
+                    <table className="w-full text-center border-collapse">
+                      <thead className="bg-[#EBF5FF]">
+                        <tr>
+                          <th className="p-3 border border-gray-200">ID</th>
+                          <th className="p-3 border border-gray-200">姓名</th>
+                          <th className="p-3 border border-gray-200">身份证</th>
+                          <th className="p-3 border border-gray-200">健康等级</th>
+                          <th className="p-3 border border-gray-200">紧急联系人</th>
+                          <th className="p-3 border border-gray-200">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {monitorElderlyList.map((elderly) => (
+                          <tr key={elderly.id} className="border-b border-gray-200 hover:bg-gray-50">
+                            <td className="p-3 border border-gray-200">{elderly.id}</td>
+                            <td className="p-3 border border-gray-200">{elderly.name}</td>
+                            <td className="p-3 border border-gray-200">{elderly.id_card}</td>
+                            <td className="p-3 border border-gray-200">{elderly.health_level}</td>
+                            <td className="p-3 border border-gray-200">{elderly.emergency_contact}</td>
+                            <td className="p-3 border border-gray-200">
+                              <button
+                                onClick={() => {
+                                  setSelectedElderlyForAdd(elderly);
+                                  setShowAddRelationModal(true);
+                                }}
+                                className="px-4 py-1 bg-green-500 text-white rounded hover:bg-green-600"
+                              >
+                                添加关联
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* 分页 */}
+                  {totalMonitorElderly > monitorPageSize && (
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-gray-600">
+                        共 {totalMonitorElderly} 个老人，当前第 {monitorPage} 页
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          disabled={monitorPage === 1 || monitorElderlyLoading}
+                          onClick={() => handleSearchElderly(monitorSearchKeyword, monitorPage - 1)}
+                          className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 hover:bg-gray-100"
+                        >
+                          上一页
+                        </button>
+                        <span className="px-3 py-1 text-sm">
+                          {monitorPage} / {Math.ceil(totalMonitorElderly / monitorPageSize)}
+                        </span>
+                        <button
+                          disabled={monitorPage >= Math.ceil(totalMonitorElderly / monitorPageSize) || monitorElderlyLoading}
+                          onClick={() => handleSearchElderly(monitorSearchKeyword, monitorPage + 1)}
+                          className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 hover:bg-gray-100"
+                        >
+                          下一页
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* 添加关联弹框 */}
+              {showAddRelationModal && selectedElderlyForAdd && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-xl p-6 w-96">
+                    <h4 className="text-lg font-semibold mb-4">添加老人关联</h4>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-gray-600 mb-2">老人信息</label>
+                        <div className="p-3 bg-gray-50 rounded-lg">
+                          <p><strong>{selectedElderlyForAdd.name}</strong></p>
+                          <p className="text-sm text-gray-500">{selectedElderlyForAdd.id_card}</p>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-gray-600 mb-2">您与老人的关系</label>
+                        <input
+                          type="text"
+                          value={relationInput}
+                          onChange={(e) => setRelationInput(e.target.value)}
+                          placeholder="如：子女、配偶、朋友等"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1E90FF]"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-6 flex justify-end gap-3">
+                      <button
+                        onClick={() => {
+                          setShowAddRelationModal(false);
+                          setSelectedElderlyForAdd(null);
+                          setRelationInput('');
+                        }}
+                        disabled={addingRelation}
+                        className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 disabled:opacity-50"
+                      >
+                        取消
+                      </button>
+                      <button
+                        onClick={handleAddElderlyRelation}
+                        disabled={addingRelation}
+                        className="px-4 py-2 bg-[#1E90FF] text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+                      >
+                        {addingRelation ? '添加中...' : '确认添加'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
       case 'aiAnalysis':
         return (
           <div className="w-full h-full flex flex-col items-center p-6">
@@ -1592,13 +1828,22 @@ const Profile = () => {
             </li>
           </ul>
           <div className="search flex items-center ml-auto">
-            <a href="#" className="flex items-center mr-[40px]">
-              <span className="iconfont icon-hezuohuoban inline-block text-2xl mr-[15px] font-semibold text-white"></span>
+            <a href="#" className="flex items-center mr-[10px]">
+              <span className="iconfont icon-hezuohuoban inline-block text-2xl mr-[10px] font-semibold text-white"></span>
               <span className="font-semibold leading-[60px] text-white">获取服务</span>
             </a>
             <a href="#" className="text-white">
               <span className="inline-block iconfont icon-sousuo text-[20px] font-semibold"></span>
             </a>
+            {/* 管理员专属：快速访问商户中心 */}
+            {isAdmin && (
+              <button
+                onClick={() => navigate('/MerchantServer')}
+                className="ml-6 px-4 py-2 bg-white text-[#1E90FF] rounded-lg font-semibold hover:bg-[#EBF5FF] transition-colors"
+              >
+                前往商户中心
+              </button>
+            )}
           </div>
         </div>
       </header>

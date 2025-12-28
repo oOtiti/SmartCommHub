@@ -20,7 +20,7 @@ api_router.include_router(providers_v1.router, prefix="/providers", tags=["provi
 api_router.include_router(services_v1.router, prefix="/services", tags=["services"])
 api_router.include_router(orders_v1.router, prefix="/orders", tags=["orders"])
 api_router.include_router(health_v1.router, prefix="/health-records", tags=["health-records"])
-api_router.include_router(access_v1.router, prefix="/access-records", tags=["access-records"])
+api_router.include_router(access_v1.router, prefix="/access", tags=["access"])
 api_router.include_router(notices_v1.router, prefix="/notices", tags=["notices"])
 api_router.include_router(edge_v1.router, prefix="/edge", tags=["edge"])
 api_router.include_router(families_v1.router, prefix="/families", tags=["families"])

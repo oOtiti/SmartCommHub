@@ -1,10 +1,11 @@
 from typing import Optional
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.dao.family_member_dao import family_member_dao
+from app.models.family_member import FamilyMember
 from app.services.family_group_service import family_group_service
 from app.services.elderly_service import elderly_service
 
@@ -21,6 +22,33 @@ class FamilyMemberOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class FamilyMemberCreateReq(BaseModel):
+    elderly_id: int
+    name: str
+    phone: str
+    relation: str
+    permission_level: str = "view"
+
+
+@router.post("/members", status_code=status.HTTP_201_CREATED)
+def create_family_member(
+    req: FamilyMemberCreateReq,
+    db: Session = Depends(get_db),
+    current=Depends(get_current_user),
+):
+    """创建家族成员关联"""
+    fm = FamilyMember(
+        name=req.name,
+        phone=req.phone,
+        relation=req.relation,
+        permission_level=req.permission_level,
+        elderly_id=req.elderly_id,
+    )
+    result = family_member_dao.create(db, fm)
+    db.commit()
+    return FamilyMemberOut.model_validate(result)
 
 
 @router.get("/by-elderly/{elderly_id}")

@@ -427,12 +427,12 @@ const MerchantServer = () => {
                         <td className="p-3 border border-gray-200">
                           <span
                             className={`px-2 py-1 rounded text-sm font-medium ${
-                              service.status === 'active'
+                              service.status === 'online'
                                 ? 'bg-green-100 text-green-600'
                                 : 'bg-gray-100 text-gray-600'
                             }`}
                           >
-                            {service.status === 'active' ? '已发布' : '未发布'}
+                            {service.status === 'online' ? '已发布' : '未发布'}
                           </span>
                         </td>
                         <td className="p-3 border border-gray-200">
@@ -795,12 +795,12 @@ const MerchantServer = () => {
             label="服务状态"
             name="status"
             rules={[{ required: true, message: '请选择服务状态' }]}
-            initialValue="active"
+            initialValue="online"
           >
             <Select
               options={[
-                { label: '已发布', value: 'active' },
-                { label: '未发布', value: 'inactive' },
+                { label: '已发布', value: 'online' },
+                { label: '未发布', value: 'offline' },
               ]}
             />
           </Form.Item>

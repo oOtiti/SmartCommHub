@@ -1,13 +1,19 @@
-import React, { Component, createRef } from 'react';
+import { Component, createRef } from 'react';
 
 export default class Test extends Component {
   myref = createRef<HTMLInputElement>();
   handelClick = () => {
     const newlist = [...this.state.mylist];
-    newlist.push(this.myref.current.value);
-    this.setState({
-      mylist: newlist,
-    });
+    if (this.myref.current) {
+        newlist.push({
+            id: Date.now(),
+            text: this.myref.current.value
+        });
+        this.setState({
+          mylist: newlist,
+        });
+        this.myref.current.value = '';
+    }
   };
   handeldel = (index: number) => {
     const newlist = [...this.state.mylist];

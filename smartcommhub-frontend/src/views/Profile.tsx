@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { message } from 'antd';
+import { message, Form, Select, DatePicker, Modal, Input, Button, Table, Tabs, Descriptions, Tag, Spin, Typography, Switch, Radio, Avatar, Empty } from 'antd';
+const { Title, Text } = Typography;
 import icon from '../assets/icon.png';
 import 'antd/dist/reset.css';
 import '../styles/index.css';
@@ -13,7 +14,7 @@ import { api } from '../api/client';
 interface UserProfile {
   id: number;
   username: string;
-  user_type: number; // 3=管理员、0=其他、1=老人、2=服务商
+  user_type: number; // 0=管理员、1=老人、2=家属、3=服务商
   is_active: boolean;
   phone: string;
   email?: string;
@@ -35,6 +36,54 @@ interface Elderly {
   health_level: string;
   emergency_contact: string;
   address: string;
+}
+
+interface HealthRecord {
+  id: number;
+  elderly_id: number;
+  monitor_type: string;
+  monitor_value: number;
+  monitor_time: string;
+  is_abnormal: number; // 0=正常, 1=异常
+  device_id: string;
+}
+
+interface Alert {
+  alert_id: number;
+  elderly_id: number;
+  monitor_type: string;
+  monitor_value: number;
+  monitor_time: string;
+  ack_status: string; // pending, acked
+  ack_time?: string;
+  is_abnormal?: number;
+}
+
+interface Provider {
+  provider_id: number;
+  name: string;
+}
+
+interface EdgeBaseline {
+  exists: boolean;
+  elderly_id?: number;
+  device_id?: string;
+  monitor_type?: string;
+  n?: number;
+  mu?: number;
+  mdev?: number;
+  sigma?: number;
+}
+
+interface ServiceItem {
+  service_id?: number;
+  provider_id: number;
+  name: string;
+  content: string;
+  duration: string;
+  price: number;
+  service_scope: string;
+  status: string;
 }
 
 interface ElderlyListResponse {
@@ -83,6 +132,8 @@ type SidebarOption =
   | 'userProfile'
   | 'orderManage'
   | 'accessRecord'
+  | 'healthRecord'
+  | 'alerts'
   | 'elderlyMonitor'
   | 'aiAnalysis'
   | 'settings';
@@ -94,6 +145,8 @@ const sidebarOptions = [
   { key: 'userInfo' as SidebarOption, label: '用户基本信息' },
   { key: 'userProfile' as SidebarOption, label: '用户详细档案' },
   { key: 'orderManage' as SidebarOption, label: '我的订单' },
+  { key: 'healthRecord' as SidebarOption, label: '健康档案' },
+  { key: 'alerts' as SidebarOption, label: '预警消息' },
   { key: 'accessRecord' as SidebarOption, label: '进出记录' },
   { key: 'elderlyMonitor' as SidebarOption, label: '监测老人' },
   { key: 'aiAnalysis' as SidebarOption, label: 'AI分析报告' },
@@ -119,7 +172,7 @@ const Profile = () => {
   const [userData, setUserData] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState<boolean>(true);
   const [profileError, setProfileError] = useState<string>('');
-  const [isAdmin, setIsAdmin] = useState<boolean>(false); // 3=管理员
+  const [isAdmin, setIsAdmin] = useState<boolean>(false); // 0=管理员
 
   // 改密码相关
   const [oldPassword, setOldPassword] = useState<string>('');
@@ -152,6 +205,23 @@ const Profile = () => {
   const [orderError, setOrderError] = useState<string>('');
   const [orderPage, setOrderPage] = useState<number>(1);
   const [orderPageSize] = useState<number>(20);
+  const [showOrderModal, setShowOrderModal] = useState<boolean>(false);
+  const [serviceList, setServiceList] = useState<ServiceItem[]>([]);
+  const [selectedService, setSelectedService] = useState<ServiceItem | null>(null);
+  const [orderForm] = Form.useForm();
+  const [serviceLoading, setServiceLoading] = useState<boolean>(false);
+
+  // 新增：服务商列表
+  const [providerList, setProviderList] = useState<Provider[]>([]);
+  const [selectedProviderId, setSelectedProviderId] = useState<number | null>(null);
+
+  // 新增：Edge Baseline
+  const [baselineData, setBaselineData] = useState<EdgeBaseline | null>(null);
+  const [showBaselineModal, setShowBaselineModal] = useState<boolean>(false);
+  const [baselineLoading, setBaselineLoading] = useState<boolean>(false);
+
+  // 新增：家属关联老人列表
+  const [familyElders, setFamilyElders] = useState<Elderly[]>([]);
 
   // 进出记录相关状态
   const [accessList, setAccessList] = useState<AccessRecord[]>([]);
@@ -161,6 +231,22 @@ const Profile = () => {
   const [accessPage, setAccessPage] = useState<number>(1);
   const [accessPageSize] = useState<number>(20);
   const [selectedElderlyId, setSelectedElderlyId] = useState<number | null>(null);
+
+  // 健康档案相关状态
+  const [healthList, setHealthList] = useState<HealthRecord[]>([]);
+  const [totalHealth, setTotalHealth] = useState<number>(0);
+  const [healthLoading, setHealthLoading] = useState<boolean>(false);
+  const [healthError, setHealthError] = useState<string>('');
+  const [healthPage, setHealthPage] = useState<number>(1);
+  const [healthPageSize] = useState<number>(20);
+
+  // 预警消息相关状态
+  const [alertList, setAlertList] = useState<Alert[]>([]);
+  const [totalAlerts, setTotalAlerts] = useState<number>(0);
+  const [alertLoading, setAlertLoading] = useState<boolean>(false);
+  const [alertError, setAlertError] = useState<string>('');
+  const [alertPage, setAlertPage] = useState<number>(1);
+  const [alertPageSize] = useState<number>(20);
 
   // 监测老人相关状态
   const [monitorSearchKeyword, setMonitorSearchKeyword] = useState<string>('');
@@ -217,11 +303,11 @@ const Profile = () => {
         }
 
         setUserData(profileData);
-        setIsAdmin(profileData.user_type === 3); // 严格匹配管理员类型
+        setIsAdmin(profileData.user_type === 0); // 0=管理员
         setNewPhone(profileData.phone || '');
 
-        // 如果是服务商，重定向到商户中心
-        if (profileData.user_type === 2) {
+        // 如果是服务商(3)，重定向到商户中心
+        if (profileData.user_type === 3) {
           navigate('/MerchantServer', { replace: true });
           return;
         }
@@ -257,7 +343,21 @@ const Profile = () => {
     if (option === 'settings' && isAdmin) {
       handleGetElderlyList();
     }
+    // 如果是家属，且点击了需要老人列表的页，确保加载了家属关联的老人
+    if (userData?.user_type === 2 && (option === 'accessRecord' || option === 'healthRecord' || option === 'alerts' || option === 'orderManage')) {
+      if (familyElders.length === 0) {
+        handleGetFamilyElders();
+      }
+    }
   };
+
+  // 计算当前可用的老人列表（管理员用全量，家属用关联）
+  const getAvailableElders = () => {
+    if (userData?.user_type === 0) return elderlyList;
+    if (userData?.user_type === 2) return familyElders;
+    return [];
+  };
+  const availableElders = getAvailableElders();
 
   // ========== 改密码功能 ==========
   const handleChangePassword = async () => {
@@ -302,12 +402,40 @@ const Profile = () => {
   };
 
   // ========== 订单管理增删改查 ==========
-  const handleGetOrderList = async (page: number = 1, pageSize: number = 20) => {
+  const handleGetOrderList = async (page: number = 1, pageSize: number = 20, elderlyId?: number) => {
+    // 逻辑同其他列表：老人看自己，家属/管理员看选定
+    let targetElderlyId = elderlyId;
+    if (!targetElderlyId) {
+      if (userData?.user_type === 1 && userData?.elderly_id) {
+        targetElderlyId = userData.elderly_id;
+      } else if (selectedElderlyId) {
+        targetElderlyId = selectedElderlyId;
+      } else if (isAdmin) {
+          // 管理员默认看所有
+          targetElderlyId = undefined; 
+      } else {
+         // 家属如果没有选定老人，则暂不显示或提示
+         // 这里我们简单处理：如果没有选定，就不传ID（后端可能返回空或报错，视API而定）
+         // 但通常家属应该先选老人。
+         if (activeOption === 'orderManage') {
+             // 只有在当前标签页才提示
+             // setOrderError('请先选择一个老人');
+         }
+         // 暂时允许为空，让后端处理
+         targetElderlyId = undefined;
+      }
+    }
+
     setOrderLoading(true);
     setOrderError('');
     try {
       const offset = (page - 1) * pageSize;
-      const response = await api.get('/orders/', { params: { offset, limit: pageSize } });
+      const params: any = { offset, limit: pageSize };
+      if (targetElderlyId) {
+        params.elderly_id = targetElderlyId;
+      }
+      
+      const response = await api.get('/orders/', { params });
       const resData = response.data as OrderListResponse;
       setOrderList(resData.items || []);
       setTotalOrders(resData.total || 0);
@@ -323,6 +451,110 @@ const Profile = () => {
       console.log('获取订单列表失败', err);
     } finally {
       setOrderLoading(false);
+    }
+  };
+
+  // 获取服务商列表
+  const handleGetProviderList = async () => {
+    try {
+      const response = await api.get('/providers/', { params: { audit_status: 'approved', offset: 0, limit: 100 } });
+      setProviderList(response.data.items || []);
+    } catch (err) {
+      console.error('获取服务商列表失败', err);
+    }
+  };
+
+  // 获取可用服务列表
+  const handleGetServiceList = async (providerId?: number) => {
+    const pid = providerId || selectedProviderId;
+    if (!pid) {
+        // 如果没有选定服务商，先尝试获取服务商列表，并选中第一个
+        if (providerList.length === 0) {
+            await handleGetProviderList();
+            // 这里不能立即拿到providerList更新后的值，所以可能需要用户手动选
+            // 或者我们再次获取一下
+            try {
+                const pRes = await api.get('/providers/', { params: { audit_status: 'approved', offset: 0, limit: 1 } });
+                const items = pRes.data.items || [];
+                if (items.length > 0) {
+                    setProviderList(items); // 只是为了更新状态
+                    setSelectedProviderId(items[0].provider_id);
+                    // 递归调用一次
+                    return handleGetServiceList(items[0].provider_id);
+                }
+            } catch {}
+        }
+        return; 
+    }
+
+    try {
+      setServiceLoading(true);
+      const response = await api.get('/services/', { params: { provider_id: pid, offset: 0, limit: 100 } });
+      setServiceList(response.data.items || []);
+    } catch (err) {
+      console.error('获取服务列表失败', err);
+    } finally {
+      setServiceLoading(false);
+    }
+  };
+
+  // 获取基准数据
+  const handleGetBaseline = async (elderlyId: number, monitorType: string) => {
+    try {
+        setBaselineLoading(true);
+        setShowBaselineModal(true);
+        const response = await api.get('/edge/baseline', {
+            params: { elderly_id: elderlyId, monitor_type: monitorType }
+        });
+        setBaselineData(response.data);
+    } catch (err) {
+        // message.info('该监测类型暂无基准数据');
+        setBaselineData(null); // Clear data on error
+    } finally {
+        setBaselineLoading(false);
+    }
+  };
+
+  // 获取家属关联的老人
+  const handleGetFamilyElders = async () => {
+    try {
+        const response = await api.get('/families/by-account/elders');
+        setFamilyElders(response.data.items || []);
+        // 同时更新monitorElderlyList以便复用展示逻辑
+        setMonitorElderlyList(response.data.items || []);
+    } catch (err) {
+        console.error('获取关联老人失败', err);
+    }
+  };
+
+  // 创建订单
+  const handleCreateOrder = async (values: any) => {
+    try {
+      // 必须有 elderly_id
+      let targetElderlyId = userData?.elderly_id;
+      if (!targetElderlyId && selectedElderlyId) {
+        targetElderlyId = selectedElderlyId;
+      }
+      if (!targetElderlyId) {
+        message.error('未识别到老人身份，无法下单');
+        return;
+      }
+
+      await api.post('/orders/', {
+        elderly_id: targetElderlyId,
+        service_id: values.service_id,
+        reserve_time: values.reserve_time.format('YYYY-MM-DD HH:mm:ss'),
+        service_time: values.reserve_time.format('YYYY-MM-DD HH:mm:ss'), // 简化，设为相同
+        order_status: 'pending',
+        pay_status: 'unpaid',
+      });
+      message.success('下单成功');
+      setShowOrderModal(false);
+      orderForm.resetFields();
+      handleGetOrderList(1, orderPageSize, targetElderlyId);
+    } catch (err) {
+      message.error('下单失败');
+      console.error(err);
     }
   };
 
@@ -468,6 +700,145 @@ const Profile = () => {
     isAdmin,
     accessPageSize,
   ]);
+
+  // ========== 预警消息管理 ==========
+  const handleGetAlertList = async (page: number = 1, pageSize: number = 20, elderlyId?: number) => {
+    // 逻辑同进出记录：老人看自己，家属/管理员看选定
+    let targetElderlyId = elderlyId;
+    if (!targetElderlyId) {
+      if (userData?.user_type === 1 && userData?.elderly_id) {
+        targetElderlyId = userData.elderly_id;
+      } else if (selectedElderlyId) {
+        targetElderlyId = selectedElderlyId;
+      } else if (isAdmin) {
+          // 管理员如果没有选定，则不传ID查看所有？或者提示
+          // 后端允许不传ID查看所有
+          targetElderlyId = undefined; 
+      } else {
+         setAlertError('请先选择一个老人');
+         return;
+      }
+    }
+
+    try {
+      setAlertLoading(true);
+      setAlertError('');
+      const offset = (page - 1) * pageSize;
+      const response = await api.get('/alerts/', {
+        params: {
+          elderly_id: targetElderlyId,
+          offset,
+          limit: pageSize,
+        },
+      });
+      const resData = response.data;
+      setAlertList(resData.items || []);
+      setTotalAlerts(resData.total || 0);
+      setAlertPage(page);
+    } catch (err) {
+      setAlertList([]);
+      setTotalAlerts(0);
+      if (axios.isAxiosError(err)) {
+        setAlertError(err.response?.data?.detail || '获取预警消息失败');
+      } else {
+        setAlertError('获取预警消息失败');
+      }
+    } finally {
+      setAlertLoading(false);
+    }
+  };
+
+  const handleAckAlert = async (alertId: number) => {
+      try {
+          await api.patch(`/alerts/${alertId}/ack`);
+          message.success('已确认处理');
+          handleGetAlertList(alertPage, alertPageSize, selectedElderlyId || undefined);
+      } catch {
+          message.error('操作失败');
+      }
+  }
+
+  // ========== 健康档案管理 ==========
+  const handleGetHealthList = async (page: number = 1, pageSize: number = 20, elderlyId?: number) => {
+    let targetElderlyId = elderlyId;
+    if (!targetElderlyId) {
+      if (userData?.user_type === 1 && userData?.elderly_id) {
+        targetElderlyId = userData.elderly_id;
+      } else if (selectedElderlyId) {
+        targetElderlyId = selectedElderlyId;
+      } else {
+        setHealthError('请先选择一个老人');
+        return;
+      }
+    }
+
+    try {
+      setHealthLoading(true);
+      setHealthError('');
+      const offset = (page - 1) * pageSize;
+      const response = await api.get('/health-records/', {
+        params: {
+          elderly_id: targetElderlyId,
+          offset,
+          limit: pageSize,
+        },
+      });
+      const resData = response.data;
+      setHealthList(resData.items || []);
+      setTotalHealth(resData.total || 0);
+      setHealthPage(page);
+    } catch (err) {
+      setHealthList([]);
+      setTotalHealth(0);
+      if (axios.isAxiosError(err)) {
+        setHealthError(err.response?.data?.detail || '获取健康档案失败');
+      } else {
+        setHealthError('获取健康档案失败');
+      }
+    } finally {
+      setHealthLoading(false);
+    }
+  };
+
+  // 监听Tab切换
+  useEffect(() => {
+    if (activeOption === 'healthRecord' && isLoggedIn) {
+        // 如果是老人，自动加载
+        if (userData?.user_type === 1) {
+            handleGetHealthList();
+        } else if (userData?.user_type === 0 && !selectedElderlyId) {
+            // 管理员需要选人，先不自动加载
+            setHealthError('请先从上方选择一个老人');
+        } else if (selectedElderlyId) {
+            handleGetHealthList(1, 20, selectedElderlyId);
+        }
+    }
+    if (activeOption === 'alerts' && isLoggedIn) {
+        // 预警消息逻辑类似
+        if (userData?.user_type === 1 || userData?.user_type === 0) {
+             // 老人看自己，管理员看全部(默认)或选定
+            handleGetAlertList();
+        } else if (selectedElderlyId) {
+            handleGetAlertList(1, 20, selectedElderlyId);
+        }
+    }
+    if (activeOption === 'orderManage' && isLoggedIn) {
+        handleGetProviderList();
+        // 自动加载订单
+        if (userData?.user_type === 1 && userData?.elderly_id) {
+            handleGetOrderList(1, 20, userData.elderly_id);
+        } else if (selectedElderlyId) {
+            handleGetOrderList(1, 20, selectedElderlyId);
+        }
+    }
+  }, [activeOption, isLoggedIn, userData, selectedElderlyId]);
+
+  // 监听用户数据变化，如果是家属，自动拉取关联老人
+  useEffect(() => {
+    if (userData?.user_type === 2) {
+      handleGetFamilyElders();
+    }
+  }, [userData?.user_type]);
 
   // ========== 监测老人相关函数 ==========
   const handleSearchElderly = async (keyword: string, page: number = 1) => {
@@ -836,13 +1207,15 @@ const Profile = () => {
               <div className="flex items-center mb-4">
                 <span className="w-32 text-gray-600">身份类型：</span>
                 <span className="font-medium">
-                  {userData.user_type === 3
+                  {userData.user_type === 0
                     ? '管理员'
                     : userData.user_type === 1
                       ? '老人'
                       : userData.user_type === 2
-                        ? '服务商'
-                        : '其他'}
+                        ? '家属'
+                        : userData.user_type === 3
+                          ? '服务商'
+                          : '其他'}
                 </span>
               </div>
               <div className="flex items-center mb-4">
@@ -859,9 +1232,23 @@ const Profile = () => {
                     : '未知'}
                 </span>
               </div>
-              {userData.user_type === 3 && (
+              {userData.user_type === 0 && (
                 <div className="mt-6 p-3 bg-[#EBF5FF] rounded-lg text-[#1E90FF] text-sm">
                   ✅ 您是管理员，可在【系统设置】中管理老人信息
+                </div>
+              )}
+
+              {userData.user_type === 2 && familyElders.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-semibold mb-3 text-gray-700">关联的老人</h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    {familyElders.map(elder => (
+                      <div key={elder.id} className="p-3 border border-blue-100 rounded-lg bg-blue-50/30">
+                        <p className="font-medium text-blue-800">{elder.name}</p>
+                        <p className="text-sm text-gray-500">健康等级: {elder.health_level}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -904,6 +1291,14 @@ const Profile = () => {
           <div className="w-full h-full flex flex-col items-center p-6">
             <h2 className="text-2xl font-bold text-[#1E90FF] mb-6">我的订单</h2>
             <div className="w-4/5 bg-white rounded-xl shadow-md p-6">
+              <div className="flex justify-end mb-4">
+                 <button 
+                   onClick={() => setShowOrderModal(true)}
+                   className="px-4 py-2 bg-[#1E90FF] text-white rounded hover:bg-blue-600"
+                 >
+                   + 预约新服务
+                 </button>
+              </div>
               {orderLoading ? (
                 <div className="text-center py-8">加载中...</div>
               ) : orderError ? (
@@ -1033,6 +1428,78 @@ const Profile = () => {
                 </div>
               </div>
             </div>
+            {/* 下单弹窗 */}
+            {showOrderModal && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-xl p-6 w-[500px]">
+                  <h4 className="text-lg font-semibold mb-4 text-[#1E90FF]">预约服务</h4>
+                  <Form form={orderForm} onFinish={handleCreateOrder} layout="vertical">
+                     <Form.Item label="选择服务商" name="provider_id" required>
+                         <Select 
+                            placeholder="请选择服务商"
+                            onChange={(val) => {
+                                setSelectedProviderId(val);
+                                handleGetServiceList(val);
+                                orderForm.setFieldsValue({ service_id: undefined }); // 重置服务
+                            }}
+                            onDropdownVisibleChange={(open) => {
+                                if (open && providerList.length === 0) {
+                                    handleGetProviderList();
+                                }
+                            }}
+                         >
+                            {providerList.map(p => (
+                                <Select.Option key={p.provider_id} value={p.provider_id}>{p.name}</Select.Option>
+                            ))}
+                         </Select>
+                     </Form.Item>
+                    <Form.Item label="选择服务" name="service_id" rules={[{ required: true, message: '请选择服务' }]}>
+                      <Select
+                        placeholder="请选择服务项目"
+                        loading={serviceLoading}
+                        onChange={(val) => {
+                          const s = serviceList.find(item => item.service_id === val);
+                          setSelectedService(s || null);
+                        }}
+                      >
+                        {serviceList.map(s => (
+                          <Select.Option key={s.service_id} value={s.service_id}>
+                            {s.name} - ￥{s.price}
+                          </Select.Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    
+                    {selectedService && (
+                      <div className="mb-4 p-3 bg-gray-50 rounded">
+                        <p className="text-sm text-gray-600"><strong>内容：</strong>{selectedService.content}</p>
+                        <p className="text-sm text-gray-600"><strong>时长：</strong>{selectedService.duration}</p>
+                      </div>
+                    )}
+
+                    <Form.Item label="预约时间" name="reserve_time" rules={[{ required: true, message: '请选择时间' }]}>
+                      <DatePicker showTime className="w-full" />
+                    </Form.Item>
+
+                    <div className="flex justify-end gap-3 mt-6">
+                      <button
+                        type="button"
+                        onClick={() => setShowOrderModal(false)}
+                        className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
+                      >
+                        取消
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-[#1E90FF] text-white rounded hover:bg-blue-600"
+                      >
+                        提交预约
+                      </button>
+                    </div>
+                  </Form>
+                </div>
+              </div>
+            )}
           </div>
         );
       case 'accessRecord':
@@ -1045,7 +1512,7 @@ const Profile = () => {
                 <div className="mb-6 p-4 bg-blue-50 rounded-lg">
                   <p className="text-sm text-gray-600 mb-2">请选择一个老人查看其进出记录</p>
                   <div className="flex gap-2">
-                    {elderlyList.length > 0 ? (
+                    {availableElders.length > 0 ? (
                       <select
                         value={selectedElderlyId || ''}
                         onChange={(e) => {
@@ -1056,7 +1523,7 @@ const Profile = () => {
                         className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-[#1E90FF]"
                       >
                         <option value="">-- 选择老人 --</option>
-                        {elderlyList.map((elderly) => (
+                        {availableElders.map((elderly) => (
                           <option key={elderly.id} value={elderly.id}>
                             {elderly.name}
                           </option>
@@ -1064,10 +1531,10 @@ const Profile = () => {
                       </select>
                     ) : (
                       <button
-                        onClick={() => handleGetElderlyList()}
+                        onClick={() => isAdmin ? handleGetElderlyList() : handleGetFamilyElders()}
                         className="px-4 py-2 bg-[#1E90FF] text-white rounded hover:bg-blue-600"
                       >
-                        加载老人列表
+                        {isAdmin ? '加载老人列表' : '刷新关联老人'}
                       </button>
                     )}
                   </div>
@@ -1165,6 +1632,301 @@ const Profile = () => {
                         accessPage >= Math.ceil(totalAccess / accessPageSize) || accessLoading
                       }
                       onClick={() => handleGetAccessList(accessPage + 1, accessPageSize)}
+                      className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                    >
+                      下一页
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      case 'healthRecord':
+        return (
+          <div className="w-full h-full flex flex-col items-center p-6">
+            <h2 className="text-2xl font-bold text-[#1E90FF] mb-6">健康档案</h2>
+            <div className="w-4/5 bg-white rounded-xl shadow-md p-6">
+              {/* 非老人用户显示老人选择 */}
+              {userData?.user_type !== 1 && (
+                <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-2">请选择一个老人查看其健康档案</p>
+                  <div className="flex gap-2">
+                    {availableElders.length > 0 ? (
+                      <select
+                        value={selectedElderlyId || ''}
+                        onChange={(e) => {
+                          const elderlyId = parseInt(e.target.value);
+                          setSelectedElderlyId(elderlyId);
+                          handleGetHealthList(1, healthPageSize, elderlyId);
+                        }}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-[#1E90FF]"
+                      >
+                        <option value="">-- 选择老人 --</option>
+                        {availableElders.map((elderly) => (
+                          <option key={elderly.id} value={elderly.id}>
+                            {elderly.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <button
+                        onClick={() => isAdmin ? handleGetElderlyList() : handleGetFamilyElders()}
+                        className="px-4 py-2 bg-[#1E90FF] text-white rounded hover:bg-blue-600"
+                      >
+                        {isAdmin ? '加载老人列表' : '刷新关联老人'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {healthLoading ? (
+                <div className="text-center py-8">加载中...</div>
+              ) : healthError ? (
+                <div className="text-center py-8 text-red-600">{healthError}</div>
+              ) : healthList.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">暂无健康档案记录</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-center border-collapse">
+                    <thead className="bg-[#EBF5FF]">
+                      <tr>
+                        <th className="p-3 rounded-l-lg border border-gray-200">记录ID</th>
+                        <th className="p-3 border border-gray-200">监测类型</th>
+                        <th className="p-3 border border-gray-200">数值</th>
+                        <th className="p-3 border border-gray-200">时间</th>
+                        <th className="p-3 border border-gray-200">状态</th>
+                        <th className="p-3 rounded-r-lg border border-gray-200">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {healthList.map((record) => (
+                        <tr key={record.id} className="border-b border-gray-200 hover:bg-gray-50">
+                          <td className="p-3 border border-gray-200">#{record.id}</td>
+                          <td className="p-3 border border-gray-200">{record.monitor_type}</td>
+                          <td className="p-3 border border-gray-200">{record.monitor_value}</td>
+                          <td className="p-3 border border-gray-200">
+                            {record.monitor_time
+                              ? new Date(record.monitor_time).toLocaleString()
+                              : '-'}
+                          </td>
+                          <td className="p-3 border border-gray-200">
+                            <span
+                              className={`px-2 py-1 rounded text-sm font-medium ${
+                                record.is_abnormal === 1
+                                  ? 'bg-red-100 text-red-600'
+                                  : 'bg-green-100 text-green-600'
+                              }`}
+                            >
+                              {record.is_abnormal === 1 ? '异常' : '正常'}
+                            </span>
+                          </td>
+                          <td className="p-3 border border-gray-200">
+                            <button
+                              onClick={() => handleGetBaseline(record.elderly_id, record.monitor_type)}
+                              className="px-2 py-1 bg-indigo-500 text-white text-xs rounded hover:bg-indigo-600"
+                            >
+                              基准数据
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+               {/* 分页控件 */}
+              {totalHealth > 0 && (
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    共 {totalHealth} 条记录，当前第 {healthPage} 页
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      disabled={healthPage <= 1 || healthLoading}
+                      onClick={() => handleGetHealthList(healthPage - 1, healthPageSize)}
+                      className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                    >
+                      上一页
+                    </button>
+                    <span className="px-3 py-1 text-sm">
+                      {healthPage} / {Math.ceil(totalHealth / healthPageSize) || 1}
+                    </span>
+                    <button
+                      disabled={
+                        healthPage >= Math.ceil(totalHealth / healthPageSize) || healthLoading
+                      }
+                      onClick={() => handleGetHealthList(healthPage + 1, healthPageSize)}
+                      className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                    >
+                      下一页
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 基准数据弹窗 */}
+              {showBaselineModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-xl p-6 w-96">
+                    <h4 className="text-lg font-semibold mb-4 text-[#1E90FF]">健康基准数据</h4>
+                    {baselineLoading ? (
+                      <div className="text-center py-4">加载中...</div>
+                    ) : baselineData ? (
+                      baselineData.exists ? (
+                        <div className="space-y-3">
+                          <p><strong>监测类型:</strong> {baselineData.monitor_type}</p>
+                          <p><strong>样本数量:</strong> {baselineData.n}</p>
+                          <p><strong>平均值 (μ):</strong> {baselineData.mu?.toFixed(2)}</p>
+                          <p><strong>平均偏差 (mdev):</strong> {baselineData.mdev?.toFixed(2)}</p>
+                          <p><strong>标准差 (σ):</strong> {baselineData.sigma?.toFixed(2)}</p>
+                          <div className="p-2 bg-blue-50 rounded text-sm text-blue-700 mt-2">
+                            基于边缘计算模型分析，用于异常检测判定。
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-4 text-gray-500">
+                          暂无基准数据（样本不足或未计算）
+                        </div>
+                      )
+                    ) : (
+                      <div className="text-center py-4 text-gray-500">无法获取数据</div>
+                    )}
+                    <div className="mt-6 flex justify-end">
+                      <button
+                        onClick={() => setShowBaselineModal(false)}
+                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                      >
+                        关闭
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      case 'alerts':
+        return (
+          <div className="w-full h-full flex flex-col items-center p-6">
+            <h2 className="text-2xl font-bold text-[#1E90FF] mb-6">预警消息</h2>
+            <div className="w-4/5 bg-white rounded-xl shadow-md p-6">
+               {/* 非老人用户显示老人选择 */}
+               {userData?.user_type !== 1 && (
+                <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                  <p className="text-sm text-gray-600 mb-2">选择老人查看（管理员默认查看所有）</p>
+                  <div className="flex gap-2">
+                    {availableElders.length > 0 ? (
+                      <select
+                        value={selectedElderlyId || ''}
+                        onChange={(e) => {
+                          const elderlyId = parseInt(e.target.value);
+                          setSelectedElderlyId(elderlyId);
+                          handleGetAlertList(1, alertPageSize, elderlyId);
+                        }}
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded focus:outline-none focus:border-[#1E90FF]"
+                      >
+                        <option value="">-- 选择老人 --</option>
+                        {availableElders.map((elderly) => (
+                          <option key={elderly.id} value={elderly.id}>
+                            {elderly.name}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <button
+                        onClick={() => isAdmin ? handleGetElderlyList() : handleGetFamilyElders()}
+                        className="px-4 py-2 bg-[#1E90FF] text-white rounded hover:bg-blue-600"
+                      >
+                        {isAdmin ? '加载老人列表' : '刷新关联老人'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {alertLoading ? (
+                <div className="text-center py-8">加载中...</div>
+              ) : alertError ? (
+                <div className="text-center py-8 text-red-600">{alertError}</div>
+              ) : alertList.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">暂无预警消息</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-center border-collapse">
+                    <thead className="bg-[#EBF5FF]">
+                      <tr>
+                        <th className="p-3 rounded-l-lg border border-gray-200">ID</th>
+                        <th className="p-3 border border-gray-200">老人ID</th>
+                        <th className="p-3 border border-gray-200">监测项</th>
+                        <th className="p-3 border border-gray-200">数值</th>
+                        <th className="p-3 border border-gray-200">时间</th>
+                        <th className="p-3 border border-gray-200">状态</th>
+                        <th className="p-3 rounded-r-lg border border-gray-200">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {alertList.map((alert) => (
+                        <tr key={alert.alert_id} className="border-b border-gray-200 hover:bg-gray-50">
+                          <td className="p-3 border border-gray-200">#{alert.alert_id}</td>
+                          <td className="p-3 border border-gray-200">{alert.elderly_id}</td>
+                          <td className="p-3 border border-gray-200">{alert.monitor_type}</td>
+                          <td className="p-3 border border-gray-200">{alert.monitor_value}</td>
+                          <td className="p-3 border border-gray-200">
+                            {alert.monitor_time
+                              ? new Date(alert.monitor_time).toLocaleString()
+                              : '-'}
+                          </td>
+                          <td className="p-3 border border-gray-200">
+                            <span
+                              className={`px-2 py-1 rounded text-sm font-medium ${
+                                alert.ack_status === 'acked'
+                                  ? 'bg-green-100 text-green-600'
+                                  : 'bg-red-100 text-red-600'
+                              }`}
+                            >
+                              {alert.ack_status === 'acked' ? '已处理' : '待处理'}
+                            </span>
+                          </td>
+                          <td className="p-3 border border-gray-200">
+                             {alert.ack_status !== 'acked' && (
+                                 <button 
+                                    onClick={() => handleAckAlert(alert.alert_id)}
+                                    className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-xs"
+                                 >
+                                     确认处理
+                                 </button>
+                             )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+               {/* 分页控件 */}
+              {totalAlerts > 0 && (
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="text-sm text-gray-600">
+                    共 {totalAlerts} 条记录，当前第 {alertPage} 页
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      disabled={alertPage <= 1 || alertLoading}
+                      onClick={() => handleGetAlertList(alertPage - 1, alertPageSize)}
+                      className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
+                    >
+                      上一页
+                    </button>
+                    <span className="px-3 py-1 text-sm">
+                      {alertPage} / {Math.ceil(totalAlerts / alertPageSize) || 1}
+                    </span>
+                    <button
+                      disabled={
+                        alertPage >= Math.ceil(totalAlerts / alertPageSize) || alertLoading
+                      }
+                      onClick={() => handleGetAlertList(alertPage + 1, alertPageSize)}
                       className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100"
                     >
                       下一页
@@ -1815,8 +2577,8 @@ const Profile = () => {
               </h1>
             </a>
           </div>
-          <ul className="flex w-[500px] h-[60px] leading-[60px] font-semibold justify-evenly items-center">
-            <li>
+          <ul className="flex w-[500px] h-[60px] leading-[60px] font-semibold justify-evenly items-center mb-[0px]">
+            <li className="h-[60px]">
               <a href="#" className="text-white hover:text-[#EBF5FF] transition-colors">
                 解决方案
               </a>
@@ -1865,7 +2627,8 @@ const Profile = () => {
                 {sidebarOptions.map((option, index) => (
                   <li
                     key={option.key}
-                    className={`mt-[${index === 0 ? 20 : 30}px] border-2 border-dotted border-[#1E90FF] hover:bg-gray-100 cursor-pointer py-3 rounded-lg transition-colors ${activeOption === option.key ? 'bg-[#1E90FF] text-white' : 'text-[#333]'}`}
+                    style={{ marginTop: index === 0 ? '20px' : '30px' }}
+                    className={`border-2 border-dotted border-[#1E90FF] hover:bg-gray-100 cursor-pointer py-3 rounded-lg transition-colors ${activeOption === option.key ? 'bg-[#1E90FF] text-white' : 'text-[#333]'}`}
                     onClick={() => handleSidebarClick(option.key)}
                   >
                     {option.label}
@@ -1913,22 +2676,22 @@ const Profile = () => {
             </li>
           </ul>
           <div className="project flex justify-center items-center mt-6">
-            <li className="mr-[20px]">
+            <li className="mr-[20px] list-none">
               <a href="https://developer.mozilla.org/zh-CN/docs/Web/HTML">
                 <span className="iconfont icon-html text-3xl! text-orange-600"></span>
               </a>
             </li>
-            <li className="mr-[20px]">
+            <li className="mr-[20px] list-none">
               <a href="https://zh-hans.react.dev/">
                 <span className="iconfont icon-react text-3xl! text-blue-500"></span>
               </a>
             </li>
-            <li className="mr-[20px]">
+            <li className="mr-[20px] list-none">
               <a href="https://vitejs.cn/vite3-cn/guide/">
                 <span className="iconfont icon-vite text-3xl! text-purple-600"></span>
               </a>
             </li>
-            <li className="mr-[20px]">
+            <li className="mr-[20px] list-none">
               <a href="https://www.python.org/">
                 <span className="iconfont icon-python text-3xl! text-blue-600"></span>
               </a>

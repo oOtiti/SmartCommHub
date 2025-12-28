@@ -1,7 +1,12 @@
 import { Component, createRef } from 'react';
 
-interface Item { id: number; text: string; }
-interface State { mylist: Item[]; }
+interface Item {
+  id: number;
+  text: string;
+}
+interface State {
+  mylist: Item[];
+}
 
 export default class Test extends Component<{}, State> {
   myref = createRef<HTMLInputElement>();
@@ -11,14 +16,14 @@ export default class Test extends Component<{}, State> {
     if (!text) return;
     const newlist = [...this.state.mylist];
     if (this.myref.current) {
-        newlist.push({
-            id: Date.now(),
-            text: this.myref.current.value
-        });
-        this.setState({
-          mylist: newlist,
-        });
-        this.myref.current.value = '';
+      newlist.push({
+        id: Date.now(),
+        text: this.myref.current.value,
+      });
+      this.setState({
+        mylist: newlist,
+      });
+      this.myref.current.value = '';
     }
   };
   handeldel = (index: number) => {

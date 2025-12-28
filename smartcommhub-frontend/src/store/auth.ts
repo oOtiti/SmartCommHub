@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { api } from '../api/client';
 
 interface Profile {
-  id: number | null;
+  id: number;
   username: string;
   user_type: number; // 统一为数字：0=管理员、1=老人、2=家属、3=服务商
   is_active: boolean;

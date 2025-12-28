@@ -16,9 +16,9 @@ import { useAuthStore } from '../store/auth';
 import { api } from '../api/client';
 
 // 【全局统一 无混乱】固定角色数字定义 - 写死无歧义
-const ROLE_ADMIN = 3;    // 管理员 → 个人中心 + 商户中心
+const ROLE_ADMIN = 3; // 管理员 → 个人中心 + 商户中心
 const ROLE_MERCHANT = 2; // 运营商 → 仅商户中心
-const ROLE_ELDER = 1;    // 老人 → 仅个人中心
+const ROLE_ELDER = 1; // 老人 → 仅个人中心
 
 const Nav = () => {
   const [showHeader, setShowHeader] = useState(true);
@@ -37,19 +37,29 @@ const Nav = () => {
       <div className="wrapper w-[60%] h-[50px] flex m-auto items-center">
         <ul className="flex leading-[50px] font-semibold justify-evenly text-[17px]">
           <li className="w-[100px] h-[50px] text-center">
-            <a href="#" className="leading-[50px]">首页</a>
+            <a href="#" className="leading-[50px]">
+              首页
+            </a>
           </li>
           <li className="w-[100px] h-[50px] text-center">
-            <a href="#" className="leading-[50px]">个人主页</a>
+            <a href="#" className="leading-[50px]">
+              个人主页
+            </a>
           </li>
           <li className="w-[100px] h-[50px] text-center">
-            <a href="#" className="leading-[50px]">新闻资讯</a>
+            <a href="#" className="leading-[50px]">
+              新闻资讯
+            </a>
           </li>
           <li className="w-[100px] h-[50px] text-center">
-            <a href="#" className="leading-[50px]">医生团队</a>
+            <a href="#" className="leading-[50px]">
+              医生团队
+            </a>
           </li>
           <li className="w-[100px] h-[50px] text-center">
-            <a href="#" className="leading-[50px]">便民服务</a>
+            <a href="#" className="leading-[50px]">
+              便民服务
+            </a>
           </li>
         </ul>
       </div>
@@ -204,10 +214,18 @@ const Home = () => {
             </a>
           </div>
           <ul className="flex w-[500px] h-[60px] leading-[60px] font-semibold justify-evenly items-center mt-[20px]">
-            <li><a href="#">解决方案</a></li>
-            <li><a href="#">社区近况</a></li>
-            <li><a href="#">运营商招揽</a></li>
-            <li><a href="#">志愿者中心</a></li>
+            <li>
+              <a href="#">解决方案</a>
+            </li>
+            <li>
+              <a href="#">社区近况</a>
+            </li>
+            <li>
+              <a href="#">运营商招揽</a>
+            </li>
+            <li>
+              <a href="#">志愿者中心</a>
+            </li>
           </ul>
           <div className="search w-auto h-[60px] flex items-center ml-auto">
             <a href="#" className="flex items-center mr-[20px]">
@@ -218,7 +236,11 @@ const Home = () => {
               <span className="inline-block iconfont icon-sousuo text-[20px] font-semibold"></span>
             </a>
             {!isLoggedIn ? (
-              <a href="javascript:;" className="text-[20px] flex items-center font-medium cursor-pointer text-white" onClick={() => setShowAuthModal(true)}>
+              <a
+                href="javascript:;"
+                className="text-[20px] flex items-center font-medium cursor-pointer text-white"
+                onClick={() => setShowAuthModal(true)}
+              >
                 登录
                 <span className="inline-block iconfont icon-yonghuguanli text-[25px] ml-[10px]"></span>
               </a>
@@ -226,12 +248,22 @@ const Home = () => {
               <div className="relative cursor-pointer" id="user-menu-container">
                 <div
                   className="flex items-center p-2 rounded-md hover:bg-[#007FFF]/20 transition-colors"
-                  onClick={(e) => { e.stopPropagation(); setShowMenu(!showMenu); }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMenu(!showMenu);
+                  }}
                 >
                   <img
                     src={userAvatar}
                     alt="用户头像"
-                    style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', marginRight: '8px', border: '2px solid #fff' }}
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      objectFit: 'cover',
+                      marginRight: '8px',
+                      border: '2px solid #fff',
+                    }}
                   />
                   <span className="text-[16px] font-medium text-white">
                     {profile?.username || '用户'}
@@ -246,34 +278,67 @@ const Home = () => {
                   {/* 👉 管理员 3 → 显示【个人中心 + 商户中心】- 核心需求 */}
                   {currentRole === ROLE_ADMIN && (
                     <>
-                      <div className="px-4 py-2 hover:bg-[#f5f5f5] cursor-pointer" onClick={() => { navigate('/Profile'); setShowMenu(false); }}>
+                      <div
+                        className="px-4 py-2 hover:bg-[#f5f5f5] cursor-pointer"
+                        onClick={() => {
+                          navigate('/Profile');
+                          setShowMenu(false);
+                        }}
+                      >
                         <span style={{ color: '#333' }}>个人中心</span>
                       </div>
-                      <div className="px-4 py-2 hover:bg-[#f5f5f5] cursor-pointer" onClick={() => { navigate('/MerchantServer'); setShowMenu(false); }}>
+                      <div
+                        className="px-4 py-2 hover:bg-[#f5f5f5] cursor-pointer"
+                        onClick={() => {
+                          navigate('/MerchantServer');
+                          setShowMenu(false);
+                        }}
+                      >
                         <span style={{ color: '#333' }}>商户中心</span>
                       </div>
                     </>
                   )}
                   {/* 👉 运营商 2 → 仅显示【商户中心】 */}
                   {currentRole === ROLE_MERCHANT && (
-                    <div className="px-4 py-2 hover:bg-[#f5f5f5] cursor-pointer" onClick={() => { navigate('/MerchantServer'); setShowMenu(false); }}>
+                    <div
+                      className="px-4 py-2 hover:bg-[#f5f5f5] cursor-pointer"
+                      onClick={() => {
+                        navigate('/MerchantServer');
+                        setShowMenu(false);
+                      }}
+                    >
                       <span style={{ color: '#333' }}>商户中心</span>
                     </div>
                   )}
                   {/* 👉 老人 1 → 仅显示【个人中心】 */}
                   {currentRole === ROLE_ELDER && (
-                    <div className="px-4 py-2 hover:bg-[#f5f5f5] cursor-pointer" onClick={() => { navigate('/Profile'); setShowMenu(false); }}>
+                    <div
+                      className="px-4 py-2 hover:bg-[#f5f5f5] cursor-pointer"
+                      onClick={() => {
+                        navigate('/Profile');
+                        setShowMenu(false);
+                      }}
+                    >
                       <span style={{ color: '#333' }}>个人中心</span>
                     </div>
                   )}
                   {/* ✅ 兜底：就算角色为空/异常，也显示【个人中心】，绝对不会空白！ */}
                   {!currentRole && (
-                    <div className="px-4 py-2 hover:bg-[#f5f5f5] cursor-pointer" onClick={() => { navigate('/Profile'); setShowMenu(false); }}>
+                    <div
+                      className="px-4 py-2 hover:bg-[#f5f5f5] cursor-pointer"
+                      onClick={() => {
+                        navigate('/Profile');
+                        setShowMenu(false);
+                      }}
+                    >
                       <span style={{ color: '#333' }}>个人中心</span>
                     </div>
                   )}
                   {/* 退出登录 - 所有角色都显示 */}
-                  <div className="px-4 py-2 hover:bg-[#f5f5f5] cursor-pointer border-t border-[#e8e8e8] mt-1" onClick={handleLogout}>
+                  <div
+                    className="px-4 py-2 hover:bg-[#f5f5f5] cursor-pointer border-t border-[#e8e8e8] mt-1"
+                    onClick={handleLogout}
+                  >
                     <span style={{ color: '#333' }}>退出登录</span>
                   </div>
                 </div>
@@ -301,98 +366,216 @@ const Home = () => {
       >
         {isLogin && !isForgot && (
           <Form form={loginForm} layout="vertical" onFinish={handleLogin}>
-            <Form.Item name="username" label="用户名" rules={[{ required: true, message: '请输入用户名' }]}>
+            <Form.Item
+              name="username"
+              label="用户名"
+              rules={[{ required: true, message: '请输入用户名' }]}
+            >
               <Input placeholder="请输入用户名" />
             </Form.Item>
-            <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入密码' }]}>
+            <Form.Item
+              name="password"
+              label="密码"
+              rules={[{ required: true, message: '请输入密码' }]}
+            >
               <Input.Password placeholder="请输入密码" />
             </Form.Item>
-            <Form.Item name="userType" label="登录类型" rules={[{ required: true, message: '请选择登录类型' }]}>
+            <Form.Item
+              name="userType"
+              label="登录类型"
+              rules={[{ required: true, message: '请选择登录类型' }]}
+            >
               <Radio.Group>
                 <Radio value="user">
                   普通用户/老人
-                  <span className="text-xs text-gray-500 ml-2">(elderly/family/operator/admin前缀账号)</span>
+                  <span className="text-xs text-gray-500 ml-2">
+                    (elderly/family/operator/admin前缀账号)
+                  </span>
                 </Radio>
                 <Radio value="merchant">
                   运营商
-                  <span className="text-xs text-gray-500 ml-2">(provider前缀账号，由管理员创建)</span>
+                  <span className="text-xs text-gray-500 ml-2">
+                    (provider前缀账号，由管理员创建)
+                  </span>
                 </Radio>
               </Radio.Group>
             </Form.Item>
             <Form.Item>
-              <Button type="primary" htmlType="submit" className="w-full bg-[#1E90FF]">登录</Button>
+              <Button type="primary" htmlType="submit" className="w-full bg-[#1E90FF]">
+                登录
+              </Button>
             </Form.Item>
             <div className="text-center text-gray-600 mt-2">
-              还没有账号？<span className="text-[#1E90FF] cursor-pointer" onClick={() => setIsLogin(false)}>立即注册</span>
+              还没有账号？
+              <span className="text-[#1E90FF] cursor-pointer" onClick={() => setIsLogin(false)}>
+                立即注册
+              </span>
             </div>
             <div className="text-center text-gray-600 mt-2">
-              忘记密码？<span className="text-[#1E90FF] cursor-pointer" onClick={() => { setIsForgot(true); setIsLogin(false); }}>找回密码</span>
+              忘记密码？
+              <span
+                className="text-[#1E90FF] cursor-pointer"
+                onClick={() => {
+                  setIsForgot(true);
+                  setIsLogin(false);
+                }}
+              >
+                找回密码
+              </span>
             </div>
           </Form>
         )}
         {!isLogin && !isForgot && (
           <Form form={registerForm} layout="vertical" onFinish={handleRegister}>
-            <Form.Item name="username" label="用户名" rules={[{ required: true, message: '请输入用户名' }, { min: 4, message: '用户名至少4个字符' }]}>
+            <Form.Item
+              name="username"
+              label="用户名"
+              rules={[
+                { required: true, message: '请输入用户名' },
+                { min: 4, message: '用户名至少4个字符' },
+              ]}
+            >
               <Input placeholder="请设置用户名" />
             </Form.Item>
-            <Form.Item name="password" label="密码" rules={[{ required: true, message: '请输入密码' }, { min: 6, message: '密码至少6个字符' }]}>
+            <Form.Item
+              name="password"
+              label="密码"
+              rules={[
+                { required: true, message: '请输入密码' },
+                { min: 6, message: '密码至少6个字符' },
+              ]}
+            >
               <Input.Password placeholder="请设置密码" />
             </Form.Item>
-            <Form.Item name="confirmPwd" label="确认密码" dependencies={['password']} rules={[{ required: true, message: '请确认密码' }, ({ getFieldValue }) => ({ validator(_, value) { if (!value || getFieldValue('password') === value) return Promise.resolve(); return Promise.reject(new Error('两次输入的密码不一致！')); }})]}>
+            <Form.Item
+              name="confirmPwd"
+              label="确认密码"
+              dependencies={['password']}
+              rules={[
+                { required: true, message: '请确认密码' },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue('password') === value) return Promise.resolve();
+                    return Promise.reject(new Error('两次输入的密码不一致！'));
+                  },
+                }),
+              ]}
+            >
               <Input.Password placeholder="请再次输入密码" />
             </Form.Item>
-            <Form.Item name="phone" label="手机号" rules={[{ required: true, message: '请输入手机号' }]}>
+            <Form.Item
+              name="phone"
+              label="手机号"
+              rules={[{ required: true, message: '请输入手机号' }]}
+            >
               <Input placeholder="请输入绑定手机号" />
             </Form.Item>
-            <Form.Item name="userType" label="注册类型" rules={[{ required: true, message: '请选择注册类型' }]}>
+            <Form.Item
+              name="userType"
+              label="注册类型"
+              rules={[{ required: true, message: '请选择注册类型' }]}
+            >
               <Radio.Group>
                 <Radio value="user">普通用户/老人</Radio>
                 <Radio value="merchant">运营商（不可自行注册）</Radio>
               </Radio.Group>
             </Form.Item>
             <Form.Item>
-              <Button type="primary" htmlType="submit" className="w-full bg-[#1E90FF]">注册</Button>
+              <Button type="primary" htmlType="submit" className="w-full bg-[#1E90FF]">
+                注册
+              </Button>
             </Form.Item>
             <div className="text-center text-gray-600 mt-2">
-              已有账号？<span className="text-[#1E90FF] cursor-pointer" onClick={() => setIsLogin(true)}>立即登录</span>
+              已有账号？
+              <span className="text-[#1E90FF] cursor-pointer" onClick={() => setIsLogin(true)}>
+                立即登录
+              </span>
             </div>
           </Form>
         )}
         {isForgot && (
-          <Form form={forgotForm} layout="vertical" onFinish={async () => {
-            try {
-              const v = await forgotForm.validateFields();
-              if (!v.phone || !v.newPwd || !v.confirmPwd) return;
-              if (v.newPwd !== v.confirmPwd) { message.error('两次密码不一致'); return; }
-              await api.post('/api/auth/forgot/reset', { phone: v.phone, code: v.code || '000000', new_password: v.newPwd });
-              message.success('密码已重置，请使用新密码登录');
-              setIsForgot(false); setIsLogin(true); forgotForm.resetFields();
-            } catch (e) {
-              let errorMsg = '重置失败，请稍后再试';
-              if (typeof e === 'object' && e !== null && 'response' in e) {
-                const response = (e as { response?: { data?: { detail?: string } } }).response;
-                if (response?.data?.detail) errorMsg = response.data.detail;
+          <Form
+            form={forgotForm}
+            layout="vertical"
+            onFinish={async () => {
+              try {
+                const v = await forgotForm.validateFields();
+                if (!v.phone || !v.newPwd || !v.confirmPwd) return;
+                if (v.newPwd !== v.confirmPwd) {
+                  message.error('两次密码不一致');
+                  return;
+                }
+                await api.post('/api/auth/forgot/reset', {
+                  phone: v.phone,
+                  code: v.code || '000000',
+                  new_password: v.newPwd,
+                });
+                message.success('密码已重置，请使用新密码登录');
+                setIsForgot(false);
+                setIsLogin(true);
+                forgotForm.resetFields();
+              } catch (e) {
+                let errorMsg = '重置失败，请稍后再试';
+                if (typeof e === 'object' && e !== null && 'response' in e) {
+                  const response = (e as { response?: { data?: { detail?: string } } }).response;
+                  if (response?.data?.detail) errorMsg = response.data.detail;
+                }
+                message.error(errorMsg);
               }
-              message.error(errorMsg);
-            }
-          }}>
-            <Form.Item name="phone" label="手机号" rules={[{ required: true, message: '请输入手机号' }]}>
+            }}
+          >
+            <Form.Item
+              name="phone"
+              label="手机号"
+              rules={[{ required: true, message: '请输入手机号' }]}
+            >
               <Input placeholder="请输入绑定的手机号" />
             </Form.Item>
             <Form.Item name="code" label="验证码（演示环境任意值通过）">
               <Input placeholder="请输入验证码" />
             </Form.Item>
-            <Form.Item name="newPwd" label="新密码" rules={[{ required: true, message: '请输入新密码' }, { min: 6, message: '至少6位' }]}>
+            <Form.Item
+              name="newPwd"
+              label="新密码"
+              rules={[
+                { required: true, message: '请输入新密码' },
+                { min: 6, message: '至少6位' },
+              ]}
+            >
               <Input.Password placeholder="请设置新密码" />
             </Form.Item>
-            <Form.Item name="confirmPwd" label="确认新密码" dependencies={['newPwd']} rules={[{ required: true, message: '请确认新密码' }, ({ getFieldValue }) => ({ validator(_, value) { if (!value || getFieldValue('newPwd') === value) return Promise.resolve(); return Promise.reject(new Error('两次输入的密码不一致！')); }})]}>
+            <Form.Item
+              name="confirmPwd"
+              label="确认新密码"
+              dependencies={['newPwd']}
+              rules={[
+                { required: true, message: '请确认新密码' },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue('newPwd') === value) return Promise.resolve();
+                    return Promise.reject(new Error('两次输入的密码不一致！'));
+                  },
+                }),
+              ]}
+            >
               <Input.Password placeholder="请再次输入新密码" />
             </Form.Item>
             <Form.Item>
-              <Button type="primary" htmlType="submit" className="w-full bg-[#1E90FF]">重置密码</Button>
+              <Button type="primary" htmlType="submit" className="w-full bg-[#1E90FF]">
+                重置密码
+              </Button>
             </Form.Item>
             <div className="text-center text-gray-600 mt-2">
-              记起密码了？<span className="text-[#1E90FF] cursor-pointer" onClick={() => { setIsForgot(false); setIsLogin(true); }}>返回登录</span>
+              记起密码了？
+              <span
+                className="text-[#1E90FF] cursor-pointer"
+                onClick={() => {
+                  setIsForgot(false);
+                  setIsLogin(true);
+                }}
+              >
+                返回登录
+              </span>
             </div>
           </Form>
         )}
@@ -404,86 +587,190 @@ const Home = () => {
         <div className="box h-[500px] w-[70px] border-2px-solid">
           <ul className="">
             <li className="fix w-[70px] hover:bg-gray">
-              <a href="https://github.com/oOtiti/SmartCommHub" className="flex flex-col items-center">
-                <span className="iconfont icon-github inline-block h-[50px] text-center text-4xl!"></span>关注我们
+              <a
+                href="https://github.com/oOtiti/SmartCommHub"
+                className="flex flex-col items-center"
+              >
+                <span className="iconfont icon-github inline-block h-[50px] text-center text-4xl!"></span>
+                关注我们
               </a>
             </li>
-            <li className="fix w-[70px] hover:bg-gray relative" onMouseEnter={() => setshow(true)} onMouseLeave={() => setshow(false)}>
+            <li
+              className="fix w-[70px] hover:bg-gray relative"
+              onMouseEnter={() => setshow(true)}
+              onMouseLeave={() => setshow(false)}
+            >
               <a href="#" className="flex flex-col items-center">
-                <span className="iconfont icon-weixin1 inline-block h-[50px] text-center text-4xl!"></span>联系我们
+                <span className="iconfont icon-weixin1 inline-block h-[50px] text-center text-4xl!"></span>
+                联系我们
               </a>
               {show && (
                 <div className="absolute translate-x-20 top-0 w-[150px] z-10 ">
                   <img src={wechat} alt="微信联系二维码" className="w-full h-full object-cover" />
-                  <div className="bg-[#F2F0EB] p-2 text-center text-[#4A4640] text-sm w-[150px] font-500">扫码添加微信，获取专属服务</div>
+                  <div className="bg-[#F2F0EB] p-2 text-center text-[#4A4640] text-sm w-[150px] font-500">
+                    扫码添加微信，获取专属服务
+                  </div>
                 </div>
               )}
             </li>
-            <li className="mb-[10px] w-[70px] hover:bg-gray"><a href="#" className="flex flex-col items-center"><span className="iconfont icon-jiaoseguanli inline-block h-[50px] text-center text-4xl!"></span>报告查询</a></li>
-            <li className="mb-[10px] w-[70px] hover:bg-gray"><a href="#" className="flex flex-col items-center"><span className="iconfont icon-yonghuguanli1 inline-block h-[50px] text-center text-4xl!"></span>人工客服</a></li>
-            <li className="mb-[10px] w-[70px] hover:bg-gray"><a href="#" className="flex flex-col items-center"><span className="iconfont icon-qudenglu inline-block h-[50px] text-center text-4xl!"></span>就诊预约</a></li>
-            <li className="mb-[10px] w-[70px] hover:bg-gray"><a href="#" className="flex flex-col items-center"><span className="iconfont icon-xiangshang inline-block h-[50px] text-center text-3xl!"></span>回到顶部</a></li>
+            <li className="mb-[10px] w-[70px] hover:bg-gray">
+              <a href="#" className="flex flex-col items-center">
+                <span className="iconfont icon-jiaoseguanli inline-block h-[50px] text-center text-4xl!"></span>
+                报告查询
+              </a>
+            </li>
+            <li className="mb-[10px] w-[70px] hover:bg-gray">
+              <a href="#" className="flex flex-col items-center">
+                <span className="iconfont icon-yonghuguanli1 inline-block h-[50px] text-center text-4xl!"></span>
+                人工客服
+              </a>
+            </li>
+            <li className="mb-[10px] w-[70px] hover:bg-gray">
+              <a href="#" className="flex flex-col items-center">
+                <span className="iconfont icon-qudenglu inline-block h-[50px] text-center text-4xl!"></span>
+                就诊预约
+              </a>
+            </li>
+            <li className="mb-[10px] w-[70px] hover:bg-gray">
+              <a href="#" className="flex flex-col items-center">
+                <span className="iconfont icon-xiangshang inline-block h-[50px] text-center text-3xl!"></span>
+                回到顶部
+              </a>
+            </li>
           </ul>
         </div>
       </aside>
       <main className="body w-full bg-[#FFFFFF]">
         <div className="wrapper w-[60%] m-auto">
           <Carousel autoplay infinite draggable arrows className="h-[500px] mt-[5px]">
-            <div className="photo h-[500px]"><img src={photo1} alt="社区图片" className="w-full h-[500px] object-cover" /></div>
-            <div className="photo h-[500px]"><img src={photo2} alt="社区图片" className="w-full h-[500px] object-cover" /></div>
-            <div className="photo h-[500px]"><img src={photo3} alt="社区图片" className="w-full h-[500px] object-cover" /></div>
+            <div className="photo h-[500px]">
+              <img src={photo1} alt="社区图片" className="w-full h-[500px] object-cover" />
+            </div>
+            <div className="photo h-[500px]">
+              <img src={photo2} alt="社区图片" className="w-full h-[500px] object-cover" />
+            </div>
+            <div className="photo h-[500px]">
+              <img src={photo3} alt="社区图片" className="w-full h-[500px] object-cover" />
+            </div>
           </Carousel>
         </div>
         <div className="h-[600px]">
-          <article className="h-full mt-[100px] bg-no-repeat bg-cover bg-center px-8 py-12" style={{ backgroundImage: `url(${photo5})`, backgroundBlendMode: 'overlay' }}>
+          <article
+            className="h-full mt-[100px] bg-no-repeat bg-cover bg-center px-8 py-12"
+            style={{ backgroundImage: `url(${photo5})`, backgroundBlendMode: 'overlay' }}
+          >
             <div className="max-w-4xl mx-auto mb-10">
-              <h2 className="font-semibold text-3xl text-[#4167B1] text-center mb-6 pb-2 border-b-2 border-[#4167B1]/30">系统功能</h2>
+              <h2 className="font-semibold text-3xl text-[#4167B1] text-center mb-6 pb-2 border-b-2 border-[#4167B1]/30">
+                系统功能
+              </h2>
               <div className="w-full bg-[#EBF5FF]/90 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
-                <section className="text-gray-700 leading-7 text-lg">智慧社区服务中心系统是为社区老年群体打造的综合服务支撑平台，打通居家养老、社区照料、健康管理等资源，让老人不出社区就能对接各类所需服务。</section>
+                <section className="text-gray-700 leading-7 text-lg">
+                  智慧社区服务中心系统是为社区老年群体打造的综合服务支撑平台，打通居家养老、社区照料、健康管理等资源，让老人不出社区就能对接各类所需服务。
+                </section>
               </div>
             </div>
             <div className="max-w-4xl mx-auto">
-              <h2 className="font-semibold text-3xl text-[#4167B1] text-center mb-6 pb-2 border-b-2 border-[#4167B1]/30">核心优点</h2>
+              <h2 className="font-semibold text-3xl text-[#4167B1] text-center mb-6 pb-2 border-b-2 border-[#4167B1]/30">
+                核心优点
+              </h2>
               <div className="w-full bg-[#EBF5FF]/90 rounded-2xl p-6 shadow-lg backdrop-blur-sm">
-                <section className="text-gray-700 leading-7 text-lg">系统采用适老化+精准化设计，大字体、语音交互适配老人使用习惯，同时根据老人健康状况智能匹配服务，减轻家属照护顾虑。</section>
+                <section className="text-gray-700 leading-7 text-lg">
+                  系统采用适老化+精准化设计，大字体、语音交互适配老人使用习惯，同时根据老人健康状况智能匹配服务，减轻家属照护顾虑。
+                </section>
               </div>
             </div>
           </article>
         </div>
         <div className="wrapper w-[60%] m-auto">
           <h2 className="font-semibold text-4xl text-center mt-[100px] text-[#4167B1]">场景运用</h2>
-          <div className="display flex justify-center items-center h-[300px]"><a href="#"><img src={photo4} alt="展示图片" className="h-[300px] object-cover" /></a></div>
+          <div className="display flex justify-center items-center h-[300px]">
+            <a href="#">
+              <img src={photo4} alt="展示图片" className="h-[300px] object-cover" />
+            </a>
+          </div>
           <h2 className="font-semibold text-4xl text-center mt-[100px] text-[#4167B1]">平台特点</h2>
           <div className="h-[500px] w-full">
             <ul className="flex justify-evenly mt-[20px]">
-              <li className="w-[210px]"><h3 className="font-semibold leading-[50px]"><span className="iconfont icon-chakan text-2xl leading-[50px] inline-block h-[50px] mr-[4px]"></span>安消适老物联</h3><p>整合消防安防与老人紧急呼叫设备，全时监测状态。</p></li>
-              <li className="w-[210px]"><h3 className="font-semibold leading-[50px]"><span className="iconfont icon-chakan text-2xl leading-[50px] inline-block h-[50px] mr-[4px]"></span>智能预警</h3><p>紧急情况3秒推送，分级预警提升响应效率。</p></li>
-              <li className="w-[210px]"><h3 className="font-semibold leading-[50px]"><span className="iconfont icon-chakan text-2xl leading-[50px] inline-block h-[50px] mr-[4px]"></span>数据联网</h3><p>同步数据至街道/卫生站，打通养老资源。</p></li>
-              <li className="w-[210px]"><h3 className="font-semibold leading-[50px]"><span className="iconfont icon-chakan text-2xl leading-[50px] inline-block h-[50px] mr-[4px]"></span>适老应用</h3><p>分角色适配，大字版一键服务更贴心。</p></li>
+              <li className="w-[210px]">
+                <h3 className="font-semibold leading-[50px]">
+                  <span className="iconfont icon-chakan text-2xl leading-[50px] inline-block h-[50px] mr-[4px]"></span>
+                  安消适老物联
+                </h3>
+                <p>整合消防安防与老人紧急呼叫设备，全时监测状态。</p>
+              </li>
+              <li className="w-[210px]">
+                <h3 className="font-semibold leading-[50px]">
+                  <span className="iconfont icon-chakan text-2xl leading-[50px] inline-block h-[50px] mr-[4px]"></span>
+                  智能预警
+                </h3>
+                <p>紧急情况3秒推送，分级预警提升响应效率。</p>
+              </li>
+              <li className="w-[210px]">
+                <h3 className="font-semibold leading-[50px]">
+                  <span className="iconfont icon-chakan text-2xl leading-[50px] inline-block h-[50px] mr-[4px]"></span>
+                  数据联网
+                </h3>
+                <p>同步数据至街道/卫生站，打通养老资源。</p>
+              </li>
+              <li className="w-[210px]">
+                <h3 className="font-semibold leading-[50px]">
+                  <span className="iconfont icon-chakan text-2xl leading-[50px] inline-block h-[50px] mr-[4px]"></span>
+                  适老应用
+                </h3>
+                <p>分角色适配，大字版一键服务更贴心。</p>
+              </li>
             </ul>
           </div>
         </div>
       </main>
       <footer className="h-[240px] bg-[#EBF5FF]">
         <div className="wrapper w-[80%] m-auto pt-[20px]">
-          <div className="friendhelpboard font-extrabold text-3xl w-full h-[50px] text-center">友情链接</div>
+          <div className="friendhelpboard font-extrabold text-3xl w-full h-[50px] text-center">
+            友情链接
+          </div>
           <ul className="w-full h-[40px] flex items-center justify-center mt-[25px] font-semibold">
-            <li className="mr-[40px]"><a href="https://github.com/oOtiti/SmartCommHub">项目主页</a></li>
-            <li className="mr-[40px]"><a href="#">技术栈</a></li>
-            <li className="mr-[40px]"><a href="https://github.com/oOtiti/SmartCommHub">WIKI</a></li>
-            <li><a href="#">支持我们</a></li>
+            <li className="mr-[40px]">
+              <a href="https://github.com/oOtiti/SmartCommHub">项目主页</a>
+            </li>
+            <li className="mr-[40px]">
+              <a href="#">技术栈</a>
+            </li>
+            <li className="mr-[40px]">
+              <a href="https://github.com/oOtiti/SmartCommHub">WIKI</a>
+            </li>
+            <li>
+              <a href="#">支持我们</a>
+            </li>
           </ul>
           <div className="project">
             <ul className="flex justify-center items-center">
-              <li><a href="https://developer.mozilla.org/zh-CN/docs/Web/HTML" className="mr-[20px]"><span className="iconfont icon-html text-3xl! text-orangecolor-600"></span></a></li>
-              <li><a href="https://zh-hans.react.dev/" className="mr-[20px]"><span className="iconfont icon-react text-3xl! text-blue-600"></span></a></li>
-              <li><a href="https://vitejs.cn/vite3-cn/guide/" className="mr-[20px]"><span className="iconfont icon-vite text-3xl! text-purple-600"></span></a></li>
-              <li><a href="https://www.python.org/" className="mr-[20px]"><span className="iconfont icon-python text-3xl! text-blue-600"></span></a></li>
+              <li>
+                <a href="https://developer.mozilla.org/zh-CN/docs/Web/HTML" className="mr-[20px]">
+                  <span className="iconfont icon-html text-3xl! text-orangecolor-600"></span>
+                </a>
+              </li>
+              <li>
+                <a href="https://zh-hans.react.dev/" className="mr-[20px]">
+                  <span className="iconfont icon-react text-3xl! text-blue-600"></span>
+                </a>
+              </li>
+              <li>
+                <a href="https://vitejs.cn/vite3-cn/guide/" className="mr-[20px]">
+                  <span className="iconfont icon-vite text-3xl! text-purple-600"></span>
+                </a>
+              </li>
+              <li>
+                <a href="https://www.python.org/" className="mr-[20px]">
+                  <span className="iconfont icon-python text-3xl! text-blue-600"></span>
+                </a>
+              </li>
             </ul>
           </div>
         </div>
         <div className="PropertyRightsStatement w-full flex justify-center items-end h-[50px]">
-          <p className="h-[50px] leading-[50px] text-sm text-[#777777]">©2025暨南大学本科课程设计 --开源设计--</p>
+          <p className="h-[50px] leading-[50px] text-sm text-[#777777]">
+            ©2025暨南大学本科课程设计 --开源设计--
+          </p>
         </div>
       </footer>
     </div>

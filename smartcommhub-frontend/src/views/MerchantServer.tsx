@@ -531,11 +531,19 @@ const MerchantServer = () => {
           <div className="flex gap-3">
             {/* 管理员专属：快速访问个人中心 */}
             {isAdmin && (
-              <Button type="default" onClick={() => navigate('/Profile')} className="bg-white text-[#1E90FF]">
+              <Button
+                type="default"
+                onClick={() => navigate('/Profile')}
+                className="bg-white text-[#1E90FF]"
+              >
                 前往个人中心
               </Button>
             )}
-            <Button type="default" onClick={() => navigate('/')} className="bg-white text-[#1E90FF]">
+            <Button
+              type="default"
+              onClick={() => navigate('/')}
+              className="bg-white text-[#1E90FF]"
+            >
               返回首页
             </Button>
           </div>

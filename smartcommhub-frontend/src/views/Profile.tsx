@@ -1232,12 +1232,17 @@ const Profile = () => {
                       </thead>
                       <tbody>
                         {monitorElderlyList.map((elderly) => (
-                          <tr key={elderly.id} className="border-b border-gray-200 hover:bg-gray-50">
+                          <tr
+                            key={elderly.id}
+                            className="border-b border-gray-200 hover:bg-gray-50"
+                          >
                             <td className="p-3 border border-gray-200">{elderly.id}</td>
                             <td className="p-3 border border-gray-200">{elderly.name}</td>
                             <td className="p-3 border border-gray-200">{elderly.id_card}</td>
                             <td className="p-3 border border-gray-200">{elderly.health_level}</td>
-                            <td className="p-3 border border-gray-200">{elderly.emergency_contact}</td>
+                            <td className="p-3 border border-gray-200">
+                              {elderly.emergency_contact}
+                            </td>
                             <td className="p-3 border border-gray-200">
                               <button
                                 onClick={() => {
@@ -1273,7 +1278,10 @@ const Profile = () => {
                           {monitorPage} / {Math.ceil(totalMonitorElderly / monitorPageSize)}
                         </span>
                         <button
-                          disabled={monitorPage >= Math.ceil(totalMonitorElderly / monitorPageSize) || monitorElderlyLoading}
+                          disabled={
+                            monitorPage >= Math.ceil(totalMonitorElderly / monitorPageSize) ||
+                            monitorElderlyLoading
+                          }
                           onClick={() => handleSearchElderly(monitorSearchKeyword, monitorPage + 1)}
                           className="px-3 py-1 text-sm border border-gray-300 rounded disabled:opacity-50 hover:bg-gray-100"
                         >
@@ -1294,7 +1302,9 @@ const Profile = () => {
                       <div>
                         <label className="block text-gray-600 mb-2">老人信息</label>
                         <div className="p-3 bg-gray-50 rounded-lg">
-                          <p><strong>{selectedElderlyForAdd.name}</strong></p>
+                          <p>
+                            <strong>{selectedElderlyForAdd.name}</strong>
+                          </p>
                           <p className="text-sm text-gray-500">{selectedElderlyForAdd.id_card}</p>
                         </div>
                       </div>

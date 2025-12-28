@@ -14,22 +14,24 @@ router = APIRouter()
 
 class FamilyMemberOut(BaseModel):
     family_id: int
+    user_id: int
     name: str
     phone: str
     relation: str
     permission_level: str
-    elderly_id: int
+    elderly_id: int | None = None
 
     class Config:
         from_attributes = True
 
 
 class FamilyMemberCreateReq(BaseModel):
-    elderly_id: int
+    user_id: int
     name: str
     phone: str
     relation: str
     permission_level: str = "view"
+    elderly_id: int | None = None
 
 
 @router.post("/members", status_code=status.HTTP_201_CREATED)
@@ -40,6 +42,7 @@ def create_family_member(
 ):
     """创建家族成员关联"""
     fm = FamilyMember(
+        user_id=req.user_id,
         name=req.name,
         phone=req.phone,
         relation=req.relation,
@@ -73,20 +76,35 @@ def list_elders_by_account(
     db: Session = Depends(get_db),
     current=Depends(get_current_user),
 ):
-    # 管理员/运营返回空数组以避免暴露所有数据；前端需指定elderly_id再查详情
-    # 家属账号：通过 family_id -> group -> elderly 映射；若无映射，回退到 family_member.elderly_id
+    # 使用当前账户的 user_id 解析到家属实体，再通过家属实体的 family_id 查询其家庭下老人
     result = []
-    family_id = getattr(current, "family_id", None)
-    if family_id:
-        elder_ids = family_group_service.elders_by_family_id(db, int(family_id))
-        if not elder_ids:
-            # 回退：直接用 family_member.family_id 的绑定老人
-            fm = family_member_dao.get(db, int(family_id))
-            if fm and getattr(fm, "elderly_id", None):
-                elder_ids = [int(fm.elderly_id)]
-        # 拉取老人简要信息
-        for eid in elder_ids:
-            obj = elderly_service.get(db, eid)
-            if obj:
-                result.append(obj)
+    cur_uid = getattr(current, "user_id", None)
+    if cur_uid is None:
+        return {"items": []}
+    fm = family_member_dao.get_by_user_id(db, int(cur_uid))
+    if not fm:
+        return {"items": []}
+    elder_ids = family_group_service.elders_by_family_id(db, int(fm.family_id))
+    # 回退：如果未配置家庭分组映射，且该家属实体存在 legacy 的 elderly_id，则返回该老人
+    if not elder_ids and getattr(fm, "elderly_id", None):
+        elder_ids = [int(fm.elderly_id)]
+    for eid in elder_ids:
+        obj = elderly_service.get(db, eid)
+        if obj:
+            result.append(obj)
     return {"items": result}
+
+@router.get("/me", response_model=FamilyMemberOut)
+def get_my_family_member(
+    db: Session = Depends(get_db),
+    current=Depends(get_current_user),
+):
+    cur_uid = getattr(current, "user_id", None)
+    if cur_uid is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="未找到家属信息（未登录或账户异常）")
+    fm = family_member_dao.get_by_user_id(db, int(cur_uid))
+    if not fm:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="当前账户未绑定家属信息")
+    return FamilyMemberOut.model_validate(fm)

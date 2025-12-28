@@ -66,47 +66,35 @@ const MerchantServer = () => {
   const [totalServices, setTotalServices] = useState(0);
   const [totalOrders, setTotalOrders] = useState(0);
 
+  // 统一的商户信息加载方法，便于更新后复用
+  const loadProviderInfo = async () => {
+    try {
+      setLoading(true);
+      const userRes = await api.get('/auth/profile');
+      const userData = userRes.data;
+      if (userData?.user_type === 0) {
+        setIsAdmin(true);
+      } else if (userData?.user_type !== 3) {
+        message.error('只有服务商和管理员可以访问商户中心');
+        navigate('/', { replace: true });
+        return;
+      }
+      const res = await api.get('/providers/me');
+      setProvider(res.data);
+    } catch (error) {
+      message.error('加载商户信息失败');
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // 初始化：加载商户信息
   useEffect(() => {
     if (!isLoggedIn) {
       navigate('/');
       return;
     }
-
-    const loadProviderInfo = async () => {
-      try {
-        setLoading(true);
-        // 先获取用户信息，然后获取其provider_id
-        const userRes = await api.get('/auth/profile');
-        const userData = userRes.data;
-
-        // 检查用户类型，服务商（user_type === 2）和管理员（user_type === 3）都可以访问
-        if (userData?.user_type === 3) {
-          // 管理员可以访问商户中心
-          setIsAdmin(true);
-        } else if (userData?.user_type !== 2) {
-          // 只有服务商和管理员可以访问商户中心
-          message.error('只有服务商和管理员可以访问商户中心');
-          navigate('/', { replace: true });
-          return;
-        }
-
-        const providerId = userData?.provider_id;
-        if (providerId) {
-          const res = await api.get(`/providers/${providerId}`);
-          setProvider(res.data);
-        } else if (userData?.user_type !== 3) {
-          // 非管理员必须有provider_id
-          message.error('未找到关联的商户信息');
-        }
-      } catch (error) {
-        message.error('加载商户信息失败');
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadProviderInfo();
   }, [isLoggedIn, navigate]);
 

@@ -18,6 +18,4 @@ class User(Base):
     pwd_changed_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
-    elderly_id = Column(BigInteger, nullable=True)
-    family_id = Column(BigInteger, nullable=True)
-    provider_id = Column(BigInteger, nullable=True)
+    # 统一关联：取消冗余的实体ID字段，使用各实体表上的 user_id 进行一对一映射

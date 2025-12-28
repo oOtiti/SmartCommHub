@@ -24,4 +24,12 @@ class ServiceItemService:
             return service_item_dao.get(db, service_id)
         return None
 
+    def delete(self, db: Session, current_user_id: Optional[int], service_id: int) -> bool:
+        rows = service_item_dao.delete(db, service_id)
+        if rows:
+            db.commit()
+            audit_log(db, current_user_id, "delete", "service_item", service_id, None)
+            return True
+        return False
+
 service_item_service = ServiceItemService()

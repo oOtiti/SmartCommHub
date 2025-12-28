@@ -1428,32 +1428,22 @@ const Profile = () => {
                             : '-'}
                         </td>
                         <td className="p-3 border border-gray-200">
-                          <span
-                            className={`px-2 py-1 rounded text-sm font-medium ${
-                              order.order_status === 'completed'
-                                ? 'bg-green-100 text-green-600'
-                                : order.order_status === 'pending'
-                                  ? 'bg-blue-100 text-blue-600'
-                                  : order.order_status === 'confirmed'
-                                    ? 'bg-yellow-100 text-yellow-600'
-                                    : 'bg-gray-100 text-gray-600'
-                            }`}
-                          >
-                            {order.order_status || '未知'}
-                          </span>
+                          {(() => {
+                            const zh = order.order_status || '';
+                            const en = zh === '已完成' ? 'completed' : zh === '已确认' ? 'confirmed' : zh === '待确认' ? 'pending' : 'unknown';
+                            const cls = en === 'completed' ? 'bg-green-100 text-green-600' : en === 'pending' ? 'bg-blue-100 text-blue-600' : en === 'confirmed' ? 'bg-yellow-100 text-yellow-600' : 'bg-gray-100 text-gray-600';
+                            const label = zh || '未知';
+                            return <span className={`px-2 py-1 rounded text-sm font-medium ${cls}`}>{label}</span>;
+                          })()}
                         </td>
                         <td className="p-3 border border-gray-200">
-                          <span
-                            className={`px-2 py-1 rounded text-sm font-medium ${
-                              order.pay_status === 'paid'
-                                ? 'bg-green-100 text-green-600'
-                                : order.pay_status === 'unpaid'
-                                  ? 'bg-red-100 text-red-600'
-                                  : 'bg-gray-100 text-gray-600'
-                            }`}
-                          >
-                            {order.pay_status || '未知'}
-                          </span>
+                          {(() => {
+                            const zh = order.pay_status || '';
+                            const en = zh === '已支付' ? 'paid' : zh === '未支付' ? 'unpaid' : 'unknown';
+                            const cls = en === 'paid' ? 'bg-green-100 text-green-600' : en === 'unpaid' ? 'bg-red-100 text-red-600' : 'bg-gray-100 text-gray-600';
+                            const label = zh || '未知';
+                            return <span className={`px-2 py-1 rounded text-sm font-medium ${cls}`}>{label}</span>;
+                          })()}
                         </td>
                         <td className="p-3 border border-gray-200">
                           <div className="flex gap-2 justify-center">

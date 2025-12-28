@@ -4,7 +4,7 @@ import { api } from '../api/client';
 interface Profile {
   id: number | null;
   username: string;
-  user_type: number | string;
+  user_type: number; // 统一为数字：0=管理员、1=老人、2=家属、3=服务商
   is_active: boolean;
 }
 
@@ -25,15 +25,6 @@ interface AuthState {
   logout: () => void;
 }
 
-const mapUserType = (u: number | string): string => {
-  const v = typeof u === 'string' ? u : Number(u);
-  if (v === 0 || v === 4) return 'admin';
-  if (v === 1) return 'elderly';
-  if (v === 2) return 'family';
-  if (v === 3) return 'provider';
-  return String(u);
-};
-
 export const useAuthStore = create<AuthState>()((set, get) => ({
   accessToken: localStorage.getItem('accessToken'),
   refreshToken: localStorage.getItem('refreshToken'),
@@ -47,11 +38,17 @@ export const useAuthStore = create<AuthState>()((set, get) => ({
   },
 
   fetchProfile: async () => {
-    const rs = await api.get('/auth/profile');
-    const prof = rs.data as Profile;
-    // 映射 user_type 为字符串便于界面显示
-    const mapped = { ...prof, user_type: mapUserType(prof.user_type) };
-    set({ profile: mapped });
+    try {
+      const rs = await api.get('/auth/profile');
+      if (rs.data) {
+        set({ profile: rs.data as Profile });
+      }
+    } catch (err) {
+      console.error('Fetch profile failed:', err);
+      set({ profile: null, isLoggedIn: false });
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+    }
   },
 
   login: async (username, password) => {

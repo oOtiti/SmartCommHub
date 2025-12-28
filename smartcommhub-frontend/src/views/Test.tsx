@@ -10,10 +10,16 @@ export default class Test extends Component<{}, State> {
     const text = value.trim();
     if (!text) return;
     const newlist = [...this.state.mylist];
-    newlist.push({ id: Date.now(), text });
-    this.setState({
-      mylist: newlist,
-    });
+    if (this.myref.current) {
+        newlist.push({
+            id: Date.now(),
+            text: this.myref.current.value
+        });
+        this.setState({
+          mylist: newlist,
+        });
+        this.myref.current.value = '';
+    }
   };
   handeldel = (index: number) => {
     const newlist = [...this.state.mylist];

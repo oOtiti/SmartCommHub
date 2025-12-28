@@ -1,13 +1,15 @@
-import icon from '../assets/icon.png';
-import { Carousel, Modal, Input, Button, Form, message, Radio } from 'antd';
+import { useRef } from 'react';
+import { Carousel, Modal, Input, Button, Form, message, Radio, List, Card, Tag, Spin, Select, Typography } from 'antd';
+const { Title } = Typography;
 import 'antd/dist/reset.css';
+import icon from '../assets/icon.png';
 import photo1 from '../assets/Photo/1.jpg';
 import photo2 from '../assets/Photo/2.webp';
 import photo3 from '../assets/Photo/3.png';
 import photo4 from '../assets/Photo/大图片.png';
 import wechat from '../assets/Photo/微信.jpg';
 import photo5 from '../assets/Photo/智慧社区.jpg';
-import '../assets/iconfont/iconfont.json';
+import '../assets/iconfont/iconfont.css';
 import '../styles/home-aside.css';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -16,11 +18,21 @@ import { useAuthStore } from '../store/auth';
 import { api } from '../api/client';
 
 // 【全局统一 无混乱】固定角色数字定义 - 写死无歧义
-const ROLE_ADMIN = 3; // 管理员 → 个人中心 + 商户中心
-const ROLE_MERCHANT = 2; // 运营商 → 仅商户中心
+const ROLE_ADMIN = 0; // 管理员 → 个人中心 + 商户中心
 const ROLE_ELDER = 1; // 老人 → 仅个人中心
+const ROLE_FAMILY = 2; // 家属 → 仅个人中心
+const ROLE_MERCHANT = 3; // 运营商 → 仅商户中心
 
-const Nav = () => {
+interface Notice {
+  notice_id: number;
+  community_id: string;
+  title: string;
+  content: string;
+  publish_time: string;
+  target_group: string;
+}
+
+const Nav = ({ onScrollToNotices }: { onScrollToNotices: () => void }) => {
   const [showHeader, setShowHeader] = useState(true);
   useEffect(() => {
     const handleScroll = () => {
@@ -37,7 +49,7 @@ const Nav = () => {
       <div className="wrapper w-[60%] h-[50px] flex m-auto items-center">
         <ul className="flex leading-[50px] font-semibold justify-evenly text-[17px]">
           <li className="w-[100px] h-[50px] text-center">
-            <a href="#" className="leading-[50px]">
+            <a href="#" className="leading-[50px]" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
               首页
             </a>
           </li>
@@ -47,7 +59,7 @@ const Nav = () => {
             </a>
           </li>
           <li className="w-[100px] h-[50px] text-center">
-            <a href="#" className="leading-[50px]">
+            <a href="#" className="leading-[50px]" onClick={(e) => { e.preventDefault(); onScrollToNotices(); }}>
               新闻资讯
             </a>
           </li>
@@ -85,6 +97,63 @@ const Home = () => {
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
 
+  // ✅ 核心修复：获取当前用户角色 - 统一使用数字类型
+  const getUserRole = () => {
+    if (!profile || profile.user_type === undefined || profile.user_type === null) return null;
+    return Number(profile.user_type);
+  };
+
+  // 公告相关状态
+  const [notices, setNotices] = useState<Notice[]>([]);
+  const [noticesLoading, setNoticesLoading] = useState(false);
+  const noticesRef = useRef<HTMLDivElement>(null);
+  const [targetGroupFilter, setTargetGroupFilter] = useState<string>('全部'); // 新增：公告筛选状态
+
+  const scrollToNotices = () => {
+    noticesRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // 获取公告列表
+  useEffect(() => {
+    const fetchNotices = async () => {
+      try {
+        setNoticesLoading(true);
+        let targetGroup = targetGroupFilter; // 使用筛选器的值
+        
+        // 如果筛选器是"全部"，则根据角色智能默认，或者确实请求"全部"
+        // 这里逻辑改为：默认显示"全部"，但如果用户选择了特定群体，就显示特定的
+        // 但是后端API如果不传target_group会报错吗？后端Query(...)是必填
+        
+        // 自动切换逻辑：如果是初次加载(或重置)，可以根据角色预设
+        // 但这里我们简单处理：用户手动选择优先。
+        // 为了方便，我们在组件挂载时，根据角色设置一次 targetGroupFilter
+        
+        const response = await api.get('/notices/', {
+          params: {
+            target_group: targetGroup,
+            offset: 0,
+            limit: 5,
+          },
+        });
+        setNotices(response.data.items || []);
+      } catch (err) {
+        console.error('获取公告失败', err);
+      } finally {
+        setNoticesLoading(false);
+      }
+    };
+    fetchNotices();
+  }, [profile, targetGroupFilter]); // 依赖 targetGroupFilter
+
+  // 初始化根据角色设置默认筛选
+  useEffect(() => {
+    const role = getUserRole();
+    if (role === ROLE_ELDER) setTargetGroupFilter('老人');
+    else if (role === ROLE_FAMILY) setTargetGroupFilter('家属');
+    else if (role === ROLE_MERCHANT) setTargetGroupFilter('服务商');
+    else setTargetGroupFilter('全部');
+  }, [profile]);
+
   // ✅ 修复1：初始化拉取用户信息 + 加容错，就算token失效也不会卡死，保证有默认值
   useEffect(() => {
     const initAuth = async () => {
@@ -120,18 +189,18 @@ const Home = () => {
   const handleLogin = async () => {
     try {
       const values = await loginForm.validateFields();
+      // 用户名前缀校验
       const { username, userType } = values;
-
-      // 用户名前缀校验 - 原逻辑保留
-      const providerPrefix = ['provider'];
-      const isProvider = providerPrefix.some((prefix) => username.toLowerCase().includes(prefix));
-      if (userType === 'merchant' && !isProvider) {
-        message.error('运营商账号必须包含 "provider" 前缀，请检查用户名');
-        return;
-      }
-      if (userType === 'user' && isProvider) {
-        message.error('运营商账号不能以普通用户身份登录，请选择"运营商"类型');
-        return;
+      
+      // 根据选择的身份进行简单的校验提示（可选，主要为了提升用户体验）
+      if (userType === 0 && !username.toLowerCase().includes('admin')) {
+        message.warning('提示：管理员账号通常包含 "admin" 前缀');
+      } else if (userType === 3 && !username.toLowerCase().includes('provider')) {
+        message.warning('提示：运营商账号通常包含 "provider" 前缀');
+      } else if (userType === 1 && !username.toLowerCase().includes('elderly')) {
+        message.warning('提示：老人账号通常包含 "elderly" 前缀');
+      } else if (userType === 2 && !username.toLowerCase().includes('family')) {
+        message.warning('提示：家属账号通常包含 "family" 前缀');
       }
 
       // 登录请求
@@ -159,12 +228,8 @@ const Home = () => {
         message.error('两次密码不一致');
         return;
       }
-      const isMerchant = values.userType === 'merchant';
-      if (isMerchant) {
-        message.info('服务商账号需由管理员创建，请联系管理员');
-        return;
-      }
-      const ok = await registerApi(values.username, values.password, 2, values.phone);
+      
+      const ok = await registerApi(values.username, values.password, values.userType, values.phone);
       if (ok) {
         message.success('注册成功！自动登录中...');
         const loginOk = await loginApi(values.username, values.password);
@@ -191,14 +256,6 @@ const Home = () => {
     setShowMenu(false);
   };
 
-  // ✅ 核心修复：获取当前用户角色 - 确保类型匹配，解决比较失败问题
-  const getUserRole = () => {
-    if (!profile || !profile.user_type) return null;
-    // 确保转换为数字类型进行比较，处理可能的空格
-    const roleStr = String(profile.user_type).trim();
-    const role = Number(roleStr);
-    return isNaN(role) ? null : role;
-  };
   const currentRole = getUserRole();
 
   return (
@@ -275,7 +332,7 @@ const Home = () => {
                   style={{ border: '1px solid #e8e8e8' }}
                   onClick={(e) => e.stopPropagation()}
                 >
-                  {/* 👉 管理员 3 → 显示【个人中心 + 商户中心】- 核心需求 */}
+                  {/* 👉 管理员 0 → 显示【个人中心 + 商户中心】- 核心需求 */}
                   {currentRole === ROLE_ADMIN && (
                     <>
                       <div
@@ -298,7 +355,7 @@ const Home = () => {
                       </div>
                     </>
                   )}
-                  {/* 👉 运营商 2 → 仅显示【商户中心】 */}
+                  {/* 👉 运营商 3 → 仅显示【商户中心】 */}
                   {currentRole === ROLE_MERCHANT && (
                     <div
                       className="px-4 py-2 hover:bg-[#f5f5f5] cursor-pointer"
@@ -310,8 +367,8 @@ const Home = () => {
                       <span style={{ color: '#333' }}>商户中心</span>
                     </div>
                   )}
-                  {/* 👉 老人 1 → 仅显示【个人中心】 */}
-                  {currentRole === ROLE_ELDER && (
+                  {/* 👉 老人 1 / 家属 2 → 仅显示【个人中心】 */}
+                  {(currentRole === ROLE_ELDER || currentRole === ROLE_FAMILY) && (
                     <div
                       className="px-4 py-2 hover:bg-[#f5f5f5] cursor-pointer"
                       onClick={() => {
@@ -383,21 +440,14 @@ const Home = () => {
             <Form.Item
               name="userType"
               label="登录类型"
+              initialValue={1}
               rules={[{ required: true, message: '请选择登录类型' }]}
             >
-              <Radio.Group>
-                <Radio value="user">
-                  普通用户/老人
-                  <span className="text-xs text-gray-500 ml-2">
-                    (elderly/family/operator/admin前缀账号)
-                  </span>
-                </Radio>
-                <Radio value="merchant">
-                  运营商
-                  <span className="text-xs text-gray-500 ml-2">
-                    (provider前缀账号，由管理员创建)
-                  </span>
-                </Radio>
+              <Radio.Group className="flex flex-wrap gap-2">
+                <Radio value={0}>管理员</Radio>
+                <Radio value={1}>老人</Radio>
+                <Radio value={2}>家属</Radio>
+                <Radio value={3}>运营商</Radio>
               </Radio.Group>
             </Form.Item>
             <Form.Item>
@@ -472,12 +522,13 @@ const Home = () => {
             </Form.Item>
             <Form.Item
               name="userType"
-              label="注册类型"
-              rules={[{ required: true, message: '请选择注册类型' }]}
+              label="注册身份"
+              initialValue={1}
+              rules={[{ required: true, message: '请选择注册身份' }]}
             >
               <Radio.Group>
-                <Radio value="user">普通用户/老人</Radio>
-                <Radio value="merchant">运营商（不可自行注册）</Radio>
+                <Radio value={1}>老人</Radio>
+                <Radio value={2}>家属</Radio>
               </Radio.Group>
             </Form.Item>
             <Form.Item>
@@ -582,7 +633,7 @@ const Home = () => {
       </Modal>
 
       {/* 原页面所有内容 - 无任何修改 */}
-      <Nav />
+      <Nav onScrollToNotices={scrollToNotices} />
       <aside className="fixed right-12% bottom-10% border-[5px] border-dotted border-blue">
         <div className="box h-[500px] w-[70px] border-2px-solid">
           <ul className="">
@@ -653,6 +704,38 @@ const Home = () => {
               <img src={photo3} alt="社区图片" className="w-full h-[500px] object-cover" />
             </div>
           </Carousel>
+
+          <div ref={noticesRef} style={{ marginTop: 24 }}>
+            <Spin spinning={noticesLoading}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                <Title level={3} style={{ margin: 0 }}>社区公告</Title>
+                <Select
+                  defaultValue="全部"
+                  value={targetGroupFilter}
+                  onChange={(value) => setTargetGroupFilter(value)}
+                  style={{ width: 120 }}
+                  options={[
+                    { value: '全部', label: '全部' },
+                    { value: '老人', label: '老人' },
+                    { value: '家属', label: '家属' },
+                    { value: '服务商', label: '服务商' },
+                  ]}
+                />
+              </div>
+              <List
+                grid={{ gutter: 16, column: 1 }}
+                dataSource={notices}
+                renderItem={(item) => (
+                  <List.Item>
+                    <Card title={item.title} extra={<Tag color="blue">{item.target_group}</Tag>} size="small" hoverable>
+                      <Typography.Paragraph ellipsis={{ rows: 2 }}>{item.content}</Typography.Paragraph>
+                      <div style={{ textAlign: 'right', color: '#999', fontSize: '12px' }}>{item.publish_time}</div>
+                    </Card>
+                  </List.Item>
+                )}
+              />
+            </Spin>
+          </div>
         </div>
         <div className="h-[600px]">
           <article

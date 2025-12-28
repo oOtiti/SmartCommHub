@@ -21,4 +21,8 @@ class ElderlyDAO(BaseDAO[Elderly]):
         items = db.execute(base.offset((page - 1) * size).limit(size)).scalars().all()
         return items, total
 
+    def get_by_user_id(self, db: Session, user_id: int) -> Optional[Elderly]:
+        stmt = select(Elderly).where(Elderly.user_id == user_id).limit(1)
+        return db.execute(stmt).scalars().first()
+
 elderly_dao = ElderlyDAO()

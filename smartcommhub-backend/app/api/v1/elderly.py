@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.api.deps import get_current_user
 from app.services.elderly_service import elderly_service
+from app.dao.elderly_dao import elderly_dao
 
 router = APIRouter()
 
@@ -28,7 +29,13 @@ class ElderlyUpdateReq(BaseModel):
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_elderly(req: ElderlyCreateReq, db: Session = Depends(get_db), current=Depends(get_current_user)):
-    return elderly_service.create(db, current_user_id=getattr(current, "id", None), **req.model_deepcopy())
+    # 按新架构创建老人时必须写入 user_id
+    uid = getattr(current, "user_id", None)
+    if uid is None:
+        raise HTTPException(status_code=400, detail="账户异常，无法创建老人档案")
+    data = req.model_deepcopy()
+    data.update({"user_id": int(uid)})
+    return elderly_service.create(db, current_user_id=int(uid), **data)
 
 
 @router.get("/")
@@ -51,6 +58,17 @@ def list_elders(
     }
 
 
+@router.get("/me")
+def get_my_elderly(db: Session = Depends(get_db), current=Depends(get_current_user)):
+    uid = getattr(current, "user_id", None)
+    if uid is None:
+        raise HTTPException(status_code=404, detail="未登录或账户异常")
+    obj = elderly_dao.get_by_user_id(db, int(uid))
+    if not obj:
+        raise HTTPException(status_code=404, detail="当前账户未绑定老人信息")
+    return obj
+
+
 @router.get("/{elderly_id}")
 def get_elderly(elderly_id: int, db: Session = Depends(get_db), current=Depends(get_current_user)):
     obj = elderly_service.get(db, elderly_id)
@@ -61,7 +79,7 @@ def get_elderly(elderly_id: int, db: Session = Depends(get_db), current=Depends(
 
 @router.put("/{elderly_id}")
 def update_elderly(elderly_id: int, req: ElderlyUpdateReq, db: Session = Depends(get_db), current=Depends(get_current_user)):
-    obj = elderly_service.update(db, getattr(current, "id", None), elderly_id, **req.model_dump(exclude_unset=True))
+    obj = elderly_service.update(db, getattr(current, "user_id", None), elderly_id, **req.model_dump(exclude_unset=True))
     if not obj:
         raise HTTPException(status_code=404, detail="老人档案不存在或未更新")
     return obj
@@ -69,7 +87,7 @@ def update_elderly(elderly_id: int, req: ElderlyUpdateReq, db: Session = Depends
 
 @router.delete("/{elderly_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_elderly(elderly_id: int, db: Session = Depends(get_db), current=Depends(get_current_user)):
-    ok = elderly_service.delete(db, getattr(current, "id", None), elderly_id)
+    ok = elderly_service.delete(db, getattr(current, "user_id", None), elderly_id)
     if not ok:
         raise HTTPException(status_code=404, detail="老人档案不存在")
     return None

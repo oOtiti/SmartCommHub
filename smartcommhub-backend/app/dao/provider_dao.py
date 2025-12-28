@@ -17,4 +17,8 @@ class ProviderDAO(BaseDAO[Provider]):
         stmt = select(Provider).where(Provider.audit_status == audit_status).offset(offset).limit(limit)
         return db.execute(stmt).scalars().all()
 
+    def get_by_user_id(self, db: Session, user_id: int) -> Optional[Provider]:
+        stmt = select(Provider).where(Provider.user_id == user_id).limit(1)
+        return db.execute(stmt).scalars().first()
+
 provider_dao = ProviderDAO()

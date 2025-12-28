@@ -1,8 +1,14 @@
 import { Component, createRef } from 'react';
 
-export default class Test extends Component {
+interface Item { id: number; text: string; }
+interface State { mylist: Item[]; }
+
+export default class Test extends Component<{}, State> {
   myref = createRef<HTMLInputElement>();
   handelClick = () => {
+    const value = this.myref.current?.value ?? '';
+    const text = value.trim();
+    if (!text) return;
     const newlist = [...this.state.mylist];
     if (this.myref.current) {
         newlist.push({
@@ -22,20 +28,11 @@ export default class Test extends Component {
       mylist: newlist,
     });
   };
-  state = {
+  state: State = {
     mylist: [
-      {
-        id: 1,
-        text: 'aaa',
-      },
-      {
-        id: 2,
-        text: 'bbb',
-      },
-      {
-        id: 3,
-        text: 'ccc',
-      },
+      { id: 1, text: 'aaa' },
+      { id: 2, text: 'bbb' },
+      { id: 3, text: 'ccc' },
     ],
   };
   render() {

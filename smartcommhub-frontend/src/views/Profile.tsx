@@ -33,6 +33,7 @@ interface Elderly {
   id?: number;
   name: string;
   id_card: string;
+  age?: number;
   health_level: string;
   emergency_contact: string;
   address: string;
@@ -190,6 +191,9 @@ const Profile = () => {
     address: '',
   });
   const [elderlyList, setElderlyList] = useState<Elderly[]>([]);
+  const [elderlyDetail, setElderlyDetail] = useState<Elderly | null>(null);
+  const [familyDetail, setFamilyDetail] = useState<FamilyMember | null>(null);
+  const [providerDetail, setProviderDetail] = useState<Provider | null>(null);
   const [totalElderly, setTotalElderly] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [listLoading, setListLoading] = useState<boolean>(false);
@@ -310,6 +314,29 @@ const Profile = () => {
         if (profileData.user_type === 3) {
           navigate('/MerchantServer', { replace: true });
           return;
+        }
+
+        // 拉取身份详情（按 user_id 统一关联）
+        try {
+          if (profileData.user_type === 1) {
+            const er = await api.get('/elders/me');
+            setElderlyDetail(er.data as Elderly);
+          } else if (profileData.user_type === 2) {
+            const fr = await api.get('/families/me');
+            setFamilyDetail(fr.data as FamilyMember);
+          } else if (profileData.user_type === 3) {
+            const pr = await api.get('/providers/me');
+            setProviderDetail(pr.data as Provider);
+          } else {
+            setElderlyDetail(null);
+            setFamilyDetail(null);
+            setProviderDetail(null);
+          }
+        } catch (e) {
+          // 身份详情拉取失败不阻断页面，仅置空
+          setElderlyDetail(null);
+          setFamilyDetail(null);
+          setProviderDetail(null);
         }
       } catch (err) {
         if (axios.isAxiosError(err)) {
@@ -610,9 +637,9 @@ const Profile = () => {
     // 如果是老人用户，自动使用其elderly_id；否则使用选定的elderly_id
     let targetElderlyId = elderlyId;
     if (!targetElderlyId) {
-      if (userData?.user_type === 1 && userData?.elderly_id) {
-        // 老人用户
-        targetElderlyId = userData.elderly_id;
+      if (userData?.user_type === 1 && elderlyDetail?.id) {
+        // 老人用户（通过 /elders/me 获取到的实体）
+        targetElderlyId = elderlyDetail.id as number;
       } else if (selectedElderlyId) {
         // 非老人但已选择老人
         targetElderlyId = selectedElderlyId;
@@ -655,11 +682,11 @@ const Profile = () => {
   useEffect(() => {
     if (activeOption === 'accessRecord' && isLoggedIn) {
       // 如果是老人，自动加载；如果需要选择老人则提示
-      if (userData?.user_type === 1 && userData?.elderly_id) {
+      if (userData?.user_type === 1 && elderlyDetail?.id) {
         // 直接调用 API 获取进出记录
         (async () => {
           const offset = 0;
-          const targetElderlyId = userData.elderly_id;
+          const targetElderlyId = elderlyDetail.id as number;
           try {
             setAccessLoading(true);
             setAccessError('');
@@ -696,7 +723,7 @@ const Profile = () => {
     activeOption,
     isLoggedIn,
     userData?.user_type,
-    userData?.elderly_id,
+    elderlyDetail?.id,
     isAdmin,
     accessPageSize,
   ]);
@@ -879,6 +906,7 @@ const Profile = () => {
       setAddingRelation(true);
       // 创建家族成员关系
       await api.post('/families/members', {
+        user_id: userData?.id,
         elderly_id: selectedElderlyForAdd.id,
         name: userData?.username || '家属',
         phone: userData?.phone || '',
@@ -1237,17 +1265,86 @@ const Profile = () => {
                   ✅ 您是管理员，可在【系统设置】中管理老人信息
                 </div>
               )}
+              {/* 按身份展示对应表的基本信息 */}
+              {userData.user_type === 1 && elderlyDetail && (
+                <div className="mt-6 grid grid-cols-2 gap-4 border-t pt-4">
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">姓名：</span>
+                    <span className="font-medium">{elderlyDetail.name || '未填写'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">身份证号：</span>
+                    <span className="font-medium">{elderlyDetail.id_card || '未填写'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">年龄：</span>
+                    <span className="font-medium">{elderlyDetail.age ?? '未填写'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">健康等级：</span>
+                    <span className="font-medium">{elderlyDetail.health_level || '未填写'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">紧急联系人：</span>
+                    <span className="font-medium">{elderlyDetail.emergency_contact || '未填写'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">居住地址：</span>
+                    <span className="font-medium">{elderlyDetail.address || '未填写'}</span>
+                  </div>
+                </div>
+              )}
 
-              {userData.user_type === 2 && familyElders.length > 0 && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-semibold mb-3 text-gray-700">关联的老人</h3>
-                  <div className="grid grid-cols-1 gap-3">
-                    {familyElders.map(elder => (
-                      <div key={elder.id} className="p-3 border border-blue-100 rounded-lg bg-blue-50/30">
-                        <p className="font-medium text-blue-800">{elder.name}</p>
-                        <p className="text-sm text-gray-500">健康等级: {elder.health_level}</p>
-                      </div>
-                    ))}
+              {userData.user_type === 2 && familyDetail && (
+                <div className="mt-6 grid grid-cols-2 gap-4 border-t pt-4">
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">姓名：</span>
+                    <span className="font-medium">{familyDetail.name || '未填写'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">手机号：</span>
+                    <span className="font-medium">{familyDetail.phone || '未绑定'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">与老人关系：</span>
+                    <span className="font-medium">{familyDetail.relation || '未填写'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">权限等级：</span>
+                    <span className="font-medium">{familyDetail.permission_level || '未填写'}</span>
+                  </div>
+                </div>
+              )}
+
+              {userData.user_type === 3 && providerDetail && (
+                <div className="mt-6 grid grid-cols-2 gap-4 border-t pt-4">
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">服务商名称：</span>
+                    <span className="font-medium">{providerDetail.name || '未填写'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">服务类型：</span>
+                    <span className="font-medium">{providerDetail.service_type || '未填写'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">服务性质：</span>
+                    <span className="font-medium">{providerDetail.service_nature || '未填写'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">资质编号：</span>
+                    <span className="font-medium">{providerDetail.qualification_id || '未填写'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">联系方式：</span>
+                    <span className="font-medium">{providerDetail.contact || '未填写'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">审核状态：</span>
+                    <span className="font-medium">{providerDetail.audit_status || '未填写'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <span className="w-32 text-gray-600">所属社区：</span>
+                    <span className="font-medium">{providerDetail.belong_community || '未填写'}</span>
                   </div>
                 </div>
               )}

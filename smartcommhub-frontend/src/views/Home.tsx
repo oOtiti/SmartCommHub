@@ -25,7 +25,6 @@ const Nav = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
   return (
     <nav
       className={`w-full bg-[#EBF5FF] pt-[5px] transition-all duration-300 ${showHeader ? 'hidden' : 'fixed h-[50px] z-20 top-0 shadow-md'}`}
@@ -80,21 +79,27 @@ const Home = () => {
   const [showMenu, setShowMenu] = useState(false);
   const navigate = useNavigate();
 
-  // 新增：注册表单中的手机号字段（已在上方声明，无需重复）
-
-  // ========== 新增：页面加载时读取登录状态（核心修复） ==========
+  // 核心修复：页面加载时读取本地Token并自动拉取用户信息
   useEffect(() => {
-    // 初始化：如果本地已有token，尝试加载资料
-    const access = localStorage.getItem('accessToken');
-    const refresh = localStorage.getItem('refreshToken');
-    if (access && refresh) {
-      setTokens(access, refresh);
-      // 延迟获取资料，避免阻塞首屏
-      useAuthStore
-        .getState()
-        .fetchProfile()
-        .catch(() => {});
-    }
+    const initAuth = async () => {
+      const access = localStorage.getItem('accessToken');
+      const refresh = localStorage.getItem('refreshToken');
+      if (access && refresh) {
+        setTokens(access, refresh);
+        try {
+          // 自动拉取用户信息，确保个人中心显示正确
+          await useAuthStore.getState().fetchProfile();
+        } catch {
+          // Token无效时清除本地状态
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('isLoggedIn');
+          localStorage.removeItem('userInfo');
+        }
+      }
+    };
+
+    initAuth();
   }, [setTokens]);
 
   // 原有逻辑：点击外部关闭菜单
@@ -115,20 +120,38 @@ const Home = () => {
   const handleLogin = async () => {
     try {
       const values = await loginForm.validateFields();
-      const ok = await loginApi(values.username, values.password);
+      const { username, userType } = values;
+
+      // 验证用户名与选择的类型是否匹配
+      const providerPrefix = ['provider'];
+
+      const isProvider = providerPrefix.some((prefix) => username.toLowerCase().includes(prefix));
+
+      if (userType === 'merchant' && !isProvider) {
+        message.error('运营商账号必须包含 "provider" 前缀，请检查用户名');
+        return;
+      }
+      if (userType === 'user' && isProvider) {
+        message.error('运营商账号不能以普通用户身份登录，请选择"运营商"类型');
+        return;
+      }
+
+      const ok = await loginApi(username, values.password);
       if (ok) {
         message.success('登录成功');
         setShowAuthModal(false);
         loginForm.resetFields();
+        // 登录成功后拉取用户信息
+        await useAuthStore.getState().fetchProfile();
       } else {
         message.error('登录失败，请检查账号密码！');
       }
-    } catch (error) {
+    } catch {
       message.error('登录失败，请检查账号密码！');
     }
   };
 
-  // 注册逻辑（无修改）
+  // 注册逻辑（确保注册后同步登录状态）
   const handleRegister = async () => {
     try {
       const values = await registerForm.validateFields();
@@ -142,28 +165,39 @@ const Home = () => {
         message.info('服务商账号需由管理员创建，请联系管理员');
         return;
       }
+      // 注册成功后自动登录并拉取用户信息
       const ok = await registerApi(values.username, values.password, 2, values.phone);
       if (ok) {
-        message.success('注册成功！请登录');
-        setIsLogin(true);
-        registerForm.resetFields();
+        message.success('注册成功！自动登录中...');
+        // 注册成功后直接调用登录接口，确保状态同步
+        const loginOk = await loginApi(values.username, values.password);
+        if (loginOk) {
+          await useAuthStore.getState().fetchProfile();
+          setIsLogin(true);
+          setShowAuthModal(false);
+          registerForm.resetFields();
+        }
       } else {
         message.error('注册失败：用户名或手机号可能已存在');
       }
-    } catch (error) {
+    } catch {
       message.error('注册失败，请检查信息！');
     }
   };
 
-  // 退出登录逻辑（新增：清除localStorage中的状态）
+  // 退出登录逻辑（清除所有本地状态，确保信息同步）
   const handleLogout = () => {
     logoutApi();
+    // 清除所有相关本地存储，避免残留状态
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('userInfo');
     message.success('退出登录成功！');
     navigate('/');
     setShowMenu(false);
   };
 
-  // 以下所有代码完全无修改，和你提供的一致
   return (
     <div className="Home relative">
       <header className="w-full bg-[#1E90FF]">
@@ -196,16 +230,14 @@ const Home = () => {
               <a href="#">志愿者中心</a>
             </li>
           </ul>
-
           <div className="search w-auto h-[60px] flex items-center ml-auto">
-            <a href="#" className="flex items-center mr-[40px]">
+            <a href="#" className="flex items-center mr-[20px]">
               <span className="iconfont icon-hezuohuoban inline-block text-2xl mr-[15px] font-semibold"></span>
               <span className="font-semibold leading-[60px]">获取服务</span>
             </a>
             <a href="#" className="mr-[40px]">
               <span className="inline-block iconfont icon-sousuo text-[20px] font-semibold"></span>
             </a>
-
             {!isLoggedIn ? (
               <a
                 href="javascript:;"
@@ -240,7 +272,6 @@ const Home = () => {
                     {profile?.username || '用户'}
                   </span>
                 </div>
-
                 <div
                   className={`absolute right-0 top-full mt-2 w-[150px] bg-white rounded-md shadow-lg py-2 z-9999 ${showMenu ? 'block' : 'hidden'}`}
                   style={{ border: '1px solid #e8e8e8' }}
@@ -249,14 +280,24 @@ const Home = () => {
                   <div
                     className="px-4 py-2 hover:bg-[#f5f5f5] cursor-pointer"
                     onClick={() => {
-                      const isProvider = profile?.user_type === 'provider';
-                      const targetPath = isProvider ? '/MerchantServer' : '/Profile';
+                      // 根据用户类型跳转对应个人中心（与Profile.tsx联动）
+                      const userType = profile?.user_type;
+                      const targetPath =
+                        userType === 3
+                          ? '/Profile' // 管理员
+                          : userType === 2
+                            ? '/MerchantServer' // 服务商
+                            : '/Profile'; // 老人/普通用户
                       navigate(targetPath);
                       setShowMenu(false);
                     }}
                   >
                     <span style={{ color: '#333' }}>
-                      {profile?.user_type === 'provider' ? '商户中心' : '个人中心'}
+                      {profile?.user_type === 3
+                        ? '管理员中心'
+                        : profile?.user_type === 2
+                          ? '商户中心'
+                          : '个人中心'}
                     </span>
                   </div>
                   <div
@@ -271,7 +312,6 @@ const Home = () => {
           </div>
         </div>
       </header>
-
       <Modal
         title={isForgot ? '找回密码' : isLogin ? '用户登录' : '用户注册'}
         open={showAuthModal}
@@ -309,8 +349,18 @@ const Home = () => {
               rules={[{ required: true, message: '请选择登录类型' }]}
             >
               <Radio.Group>
-                <Radio value="user">普通用户</Radio>
-                <Radio value="merchant">运营商</Radio>
+                <Radio value="user">
+                  普通用户/老人
+                  <span className="text-xs text-gray-500 ml-2">
+                    (elderly/family/operator/admin前缀账号)
+                  </span>
+                </Radio>
+                <Radio value="merchant">
+                  运营商
+                  <span className="text-xs text-gray-500 ml-2">
+                    (provider前缀账号，由管理员创建)
+                  </span>
+                </Radio>
               </Radio.Group>
             </Form.Item>
             <Form.Item>
@@ -338,7 +388,6 @@ const Home = () => {
             </div>
           </Form>
         )}
-
         {!isLogin && !isForgot && (
           <Form form={registerForm} layout="vertical" onFinish={handleRegister}>
             <Form.Item
@@ -378,13 +427,20 @@ const Home = () => {
               <Input.Password placeholder="请再次输入密码" />
             </Form.Item>
             <Form.Item
+              name="phone"
+              label="手机号"
+              rules={[{ required: true, message: '请输入手机号' }]}
+            >
+              <Input placeholder="请输入绑定手机号" />
+            </Form.Item>
+            <Form.Item
               name="userType"
               label="注册类型"
               rules={[{ required: true, message: '请选择注册类型' }]}
             >
               <Radio.Group>
-                <Radio value="user">普通用户</Radio>
-                <Radio value="merchant">运营商</Radio>
+                <Radio value="user">普通用户/老人</Radio>
+                <Radio value="merchant">运营商（不可自行注册）</Radio>
               </Radio.Group>
             </Form.Item>
             <Form.Item>
@@ -400,7 +456,6 @@ const Home = () => {
             </div>
           </Form>
         )}
-
         {isForgot && (
           <Form
             form={forgotForm}
@@ -413,19 +468,26 @@ const Home = () => {
                   message.error('两次密码不一致');
                   return;
                 }
-                // 演示版：验证码任意值视为通过
-                await api.post('/auth/forgot/reset', {
+                // 调用密码重置接口，重置后清除本地状态
+                await api.post('/api/auth/forgot/reset', {
                   phone: v.phone,
                   code: v.code || '000000',
                   new_password: v.newPwd,
                 });
                 message.success('密码已重置，请使用新密码登录');
+                // 重置成功后跳转登录页
                 setIsForgot(false);
                 setIsLogin(true);
                 forgotForm.resetFields();
-              } catch (e: any) {
-                const msg = e?.response?.data?.detail || '重置失败，请稍后再试';
-                message.error(msg);
+              } catch (e) {
+                let errorMsg = '重置失败，请稍后再试';
+                if (typeof e === 'object' && e !== null && 'response' in e) {
+                  const response = (e as { response?: { data?: { detail?: string } } }).response;
+                  if (response?.data?.detail) {
+                    errorMsg = response.data.detail;
+                  }
+                }
+                message.error(errorMsg);
               }
             }}
           >
@@ -485,9 +547,7 @@ const Home = () => {
           </Form>
         )}
       </Modal>
-
       <Nav />
-
       <aside className="fixed right-12% bottom-10% border-[5px] border-dotted border-blue">
         <div className="box h-[500px] w-[70px] border-2px-solid">
           <ul className="">
@@ -545,7 +605,6 @@ const Home = () => {
           </ul>
         </div>
       </aside>
-
       <main className="body w-full bg-[#FFFFFF]">
         <div className="wrapper w-[60%] m-auto">
           <Carousel autoplay infinite draggable arrows className="h-[500px] mt-[5px]">
@@ -560,7 +619,6 @@ const Home = () => {
             </div>
           </Carousel>
         </div>
-
         <div className="h-[600px]">
           <article
             className="h-full mt-[100px] bg-no-repeat bg-cover bg-center px-8 py-12"
@@ -588,7 +646,6 @@ const Home = () => {
             </div>
           </article>
         </div>
-
         <div className="wrapper w-[60%] m-auto">
           <h2 className="font-semibold text-4xl text-center mt-[100px] text-[#4167B1]">场景运用</h2>
           <div className="display flex justify-center items-center h-[300px]">
@@ -631,7 +688,6 @@ const Home = () => {
           </div>
         </div>
       </main>
-
       <footer className="h-[240px] bg-[#EBF5FF]">
         <div className="wrapper w-[80%] m-auto pt-[20px]">
           <div className="friendhelpboard font-extrabold text-3xl w-full h-[50px] text-center">

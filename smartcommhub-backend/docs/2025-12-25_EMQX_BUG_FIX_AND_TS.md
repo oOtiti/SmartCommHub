@@ -53,10 +53,23 @@
    cd ~/dbSmartSys4Old/SmartCommHub
    uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
    ```
+  拿令牌
+   (pyt4cls) droot@mwhx:~/dbSmartSys4Old/SmartCommHub$ curl -X POST "http://127.0.0.1:8000/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"admin123"}'
+
+  TOKEN=''
+
+  #MQTT层
+  mosquitto_sub -h 127.0.0.1 -p 1883 -t smartcommhub/health -v
+  
+
 2. 准备客户端：
    - WebSocket：
      ```bash
-     p
+     (pyt4cls) droot@mwhx:~/dbSmartSys4Old/SmartCommHub$ wscat \
+  -H "Origin: http://localhost:5173" \
+  -c "ws://127.0.0.1:8000/ws/warning?token=$TOKEN"
      ```
    - MQTT 发布（任选其一）：
      - 命令行：

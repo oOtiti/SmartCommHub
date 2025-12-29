@@ -19,12 +19,14 @@ class ServiceOrderDAO(BaseDAO[ServiceOrder]):
         return db.execute(stmt).scalars().all()
 
     def confirm(self, db: Session, order_id: int) -> int:
-        stmt = update(ServiceOrder).where(ServiceOrder.order_id == order_id).values(order_status="已确认").execution_options(synchronize_session="fetch")
+        # English enum per DB constraint
+        stmt = update(ServiceOrder).where(ServiceOrder.order_id == order_id).values(order_status="confirmed").execution_options(synchronize_session="fetch")
         res = db.execute(stmt)
         return res.rowcount or 0
 
     def complete(self, db: Session, order_id: int) -> int:
-        stmt = update(ServiceOrder).where(ServiceOrder.order_id == order_id).values(order_status="已完成").execution_options(synchronize_session="fetch")
+        # English enum per DB constraint
+        stmt = update(ServiceOrder).where(ServiceOrder.order_id == order_id).values(order_status="finished").execution_options(synchronize_session="fetch")
         res = db.execute(stmt)
         return res.rowcount or 0
 

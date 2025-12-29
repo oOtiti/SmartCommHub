@@ -26,20 +26,15 @@ class RateReq(BaseModel):
 @router.post("/", status_code=status.HTTP_201_CREATED)
 def create_order(req: OrderCreateReq, db: Session = Depends(get_db), current=Depends(get_current_user)):
     data = req.model_dump(exclude_unset=True)
-    # 兼容前端英文状态到中文
+    # 存储采用英文枚举，兼容前端旧值
     status_map = {
-        "pending": "待确认",
-        "confirmed": "已确认",
-        "completed": "已完成",
+        "pending": "created",
+        "confirmed": "confirmed",
+        "completed": "finished",
     }
-    pay_map = {
-        "paid": "已支付",
-        "unpaid": "未支付",
-    }
+    # pay_status 英文枚举已与数据库一致（unpaid/paid/refunded）
     if data.get("order_status") in status_map:
         data["order_status"] = status_map[data["order_status"]]
-    if data.get("pay_status") in pay_map:
-        data["pay_status"] = pay_map[data["pay_status"]]
     return service_order_service.create(db, getattr(current, "user_id", None), **data)
 
 

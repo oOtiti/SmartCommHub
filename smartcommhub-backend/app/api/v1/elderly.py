@@ -69,6 +69,20 @@ def get_my_elderly(db: Session = Depends(get_db), current=Depends(get_current_us
     return obj
 
 
+@router.patch("/me")
+def update_my_elderly(req: ElderlyUpdateReq, db: Session = Depends(get_db), current=Depends(get_current_user)):
+    uid = getattr(current, "user_id", None)
+    if uid is None:
+        raise HTTPException(status_code=404, detail="未登录或账户异常")
+    me = elderly_dao.get_by_user_id(db, int(uid))
+    if not me:
+        raise HTTPException(status_code=404, detail="当前账户未绑定老人信息")
+    obj = elderly_service.update(db, getattr(current, "user_id", None), int(me.elderly_id), **req.model_dump(exclude_unset=True))
+    if not obj:
+        raise HTTPException(status_code=400, detail="老人资料未更新")
+    return obj
+
+
 @router.get("/{elderly_id}")
 def get_elderly(elderly_id: int, db: Session = Depends(get_db), current=Depends(get_current_user)):
     obj = elderly_service.get(db, elderly_id)

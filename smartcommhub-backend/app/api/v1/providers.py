@@ -57,6 +57,20 @@ def get_my_provider(db: Session = Depends(get_db), current=Depends(get_current_u
     return obj
 
 
+@router.patch("/me")
+def update_my_provider(req: ProviderUpdateReq, db: Session = Depends(get_db), current=Depends(get_current_user)):
+    uid = getattr(current, "user_id", None)
+    if uid is None:
+        raise HTTPException(status_code=404, detail="未登录或账户异常")
+    obj = provider_dao.get_by_user_id(db, int(uid))
+    if not obj:
+        raise HTTPException(status_code=404, detail="当前账户未绑定服务商信息")
+    updated = provider_service.update(db, getattr(current, "user_id", None), int(obj.provider_id), **req.model_dump(exclude_unset=True))
+    if not updated:
+        raise HTTPException(status_code=400, detail="服务商资料未更新")
+    return updated
+
+
 @router.get("/{provider_id}")
 def get_provider(provider_id: int, db: Session = Depends(get_db), current=Depends(get_current_user)):
     obj = provider_service.get(db, provider_id)

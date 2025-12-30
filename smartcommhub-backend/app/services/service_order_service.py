@@ -16,6 +16,9 @@ class ServiceOrderService:
     def list(self, db: Session, elderly_id: Optional[int], status: Optional[str], offset: int, limit: int) -> Sequence[ServiceOrder]:
         return service_order_dao.list(db, elderly_id, status, offset, limit)
 
+    def list_by_elderly_ids(self, db: Session, elderly_ids: Sequence[int], status: Optional[str], offset: int, limit: int) -> Sequence[ServiceOrder]:
+        return service_order_dao.list_by_elderly_ids(db, elderly_ids, status, offset, limit)
+
     def confirm(self, db: Session, current_user_id: Optional[int], order_id: int) -> bool:
         rows = service_order_dao.confirm(db, order_id)
         if rows:
@@ -37,6 +40,14 @@ class ServiceOrderService:
         if rows:
             db.commit()
             audit_log(db, current_user_id, "rate", "service_order", order_id, {"score": score})
+            return True
+        return False
+
+    def pay(self, db: Session, current_user_id: Optional[int], order_id: int) -> bool:
+        rows = service_order_dao.pay(db, order_id)
+        if rows:
+            db.commit()
+            audit_log(db, current_user_id, "pay", "service_order", order_id, None)
             return True
         return False
 

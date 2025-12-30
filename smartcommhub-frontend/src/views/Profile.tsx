@@ -1,26 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import {
-  message,
-  Form,
-  Select,
-  DatePicker,
-  Modal,
-  Input,
-  Button,
-  Table,
-  Tabs,
-  Descriptions,
-  Tag,
-  Spin,
-  Typography,
-  Switch,
-  Radio,
-  Avatar,
-  Empty,
-} from 'antd';
-const { Title, Text } = Typography;
+import { message, Form, Select, DatePicker } from 'antd';
 import icon from '../assets/icon.png';
 import 'antd/dist/reset.css';
 import '../styles/index.css';
@@ -163,8 +144,29 @@ interface OrderListResponse {
   limit: number;
   items: ServiceOrder[];
 }
+interface ElderlyListResponse {
+  data: Elderly[];
+  total: number;
+}
+
+// 状态显示映射（英文枚举 → 中文标签）
+const ORDER_STATUS_TEXT: Record<string, string> = {
+  created: '待确认',
+  confirmed: '已确认',
+  in_service: '服务中',
+  finished: '已完成',
+  canceled: '已取消',
+};
+const PAY_STATUS_TEXT: Record<string, string> = {
+  unpaid: '未支付',
+  paid: '已支付',
+  refunded: '已退款',
+};
+const orderStatusLabel = (status?: string) => (status && ORDER_STATUS_TEXT[status]) || status || '未知';
+const payStatusLabel = (status?: string) => (status && PAY_STATUS_TEXT[status]) || status || '未知';
 
 type SidebarOption =
+  | 'userInfo'
   | 'orderManage'
   | 'accessRecord'
   | 'healthRecord'
@@ -173,6 +175,7 @@ type SidebarOption =
   | 'aiAnalysis'
   | 'settings';
 type AiSubFunction = 'demandAnalysis' | 'satisfaction' | 'recommendation' | 'consumptionTrend';
+type AiAgent = 'qwen' | 'chatgpt' | 'ernie' | 'gemini';
 
 // ========== 静态配置 ==========
 const sidebarOptions = [
@@ -215,7 +218,7 @@ const Profile = () => {
   const [changePwdError, setChangePwdError] = useState<string>('');
 
   // 老人管理核心状态（初始化兜底）
-  const [elderlyForm, setElderlyForm] = useState<Elderly>({
+  const [elderlyForm, setElderlyForm] = useState<Partial<Elderly>>({
     name: '',
     id_card: '',
     health_level: '',
@@ -314,6 +317,25 @@ const Profile = () => {
   const [receivePush, setReceivePush] = useState<boolean>(true);
   const [theme, setTheme] = useState<string>('blue');
   const [fontSize, setFontSize] = useState<string>('default');
+  // 各身份资料编辑状态
+  const [elderlyEditName, setElderlyEditName] = useState<string>('');
+  const [elderlyEditAge, setElderlyEditAge] = useState<string>('');
+  const [elderlyEditHealth, setElderlyEditHealth] = useState<string>('');
+  const [elderlyEditEmergency, setElderlyEditEmergency] = useState<string>('');
+  const [elderlyEditAddress, setElderlyEditAddress] = useState<string>('');
+  const [elderlySaving, setElderlySaving] = useState<boolean>(false);
+
+  const [familyEditName, setFamilyEditName] = useState<string>('');
+  const [familyEditRelation, setFamilyEditRelation] = useState<string>('');
+  const [familyEditPerm, setFamilyEditPerm] = useState<string>('');
+  const [familySaving, setFamilySaving] = useState<boolean>(false);
+
+  const [providerEditName, setProviderEditName] = useState<string>('');
+  const [providerEditType, setProviderEditType] = useState<string>('');
+  const [providerEditNature, setProviderEditNature] = useState<string>('');
+  const [providerEditContact, setProviderEditContact] = useState<string>('');
+  const [providerEditCommunity, setProviderEditCommunity] = useState<string>('');
+  const [providerSaving, setProviderSaving] = useState<boolean>(false);
 
   const navigate = useNavigate();
 
@@ -514,6 +536,16 @@ const Profile = () => {
     try {
       const offset = (page - 1) * pageSize;
       const params: any = { offset, limit: pageSize };
+      // 家属用户且未指定老人：按账户/家庭聚合订单
+      if (userData?.user_type === 2 && !targetElderlyId) {
+        const response = await api.get('/orders/by-account', { params });
+        const resData = response.data as OrderListResponse;
+        setOrderList(resData.items || []);
+        setTotalOrders(resData.total || 0);
+        setOrderPage(page);
+        return;
+      }
+
       if (targetElderlyId) {
         params.elderly_id = targetElderlyId;
       }
@@ -565,8 +597,9 @@ const Profile = () => {
         service_id: selectedService.service_id!,
         reserve_time: values.reserve_time.format('YYYY-MM-DD HH:mm:ss'),
         service_time: values.reserve_time.format('YYYY-MM-DD HH:mm:ss'), 
-        order_status: '待确认',
-        pay_status: '未支付'
+        // 使用后端数据库约束的英文枚举
+        order_status: 'created',
+        pay_status: 'unpaid'
       };
 
       await api.post('/orders/', payload);
@@ -700,6 +733,18 @@ const Profile = () => {
     }
   };
 
+  // 支付订单（假支付）
+  const handlePayOrder = async (orderId: number) => {
+    try {
+      await api.patch(`/orders/${orderId}/pay`);
+      message.success('支付成功');
+      handleGetOrderList();
+    } catch (err) {
+      message.error('支付失败');
+      console.log('支付失败', err);
+    }
+  };
+
   // 获取所有服务项目（用于显示名称）
   const handleGetAllServices = async () => {
     try {
@@ -816,7 +861,7 @@ const Profile = () => {
         setAccessError('请先从系统设置中选择一个老人');
       }
     }
-  }, [activeOption, isLoggedIn, userData?.user_type, elderlyDetail?.id, isAdmin, accessPageSize]);
+  }, [activeOption, isLoggedIn, userData?.user_type, elderlyDetail?.elderly_id, isAdmin, accessPageSize]);
 
   // ========== 预警消息管理 ==========
   const handleGetAlertList = async (
@@ -1193,7 +1238,7 @@ const Profile = () => {
     }, 1500);
   };
 
-  const handleSaveSettings = () => {
+  const handleSaveSettings = async () => {
     const savedSettings = {
       phone: newPhone || userData?.phone || '未修改',
       aiApiUrl,
@@ -1205,8 +1250,131 @@ const Profile = () => {
       fontSize,
     };
     console.log('保存设置：', savedSettings);
-    message.success('设置保存成功');
-    if (!newPhone) setNewPhone(userData?.phone || '');
+
+    // 更新个人资料（当前后端支持更新 phone）
+    try {
+      if (newPhone && newPhone !== userData?.phone) {
+        const resp = await api.patch('/auth/profile', { phone: newPhone });
+        const updatedPhone = resp.data?.phone ?? newPhone;
+        setUserData((prev) => (prev ? { ...prev, phone: updatedPhone } : prev));
+        message.success('资料更新成功');
+      } else {
+        message.success('设置保存成功');
+      }
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        message.error(err.response?.data?.detail || '资料更新失败');
+      } else {
+        message.error('资料更新失败');
+      }
+    } finally {
+      if (!newPhone) setNewPhone(userData?.phone || '');
+    }
+  };
+
+  // ========== 各身份资料更新 ==========
+  const handleSaveElderlyProfile = async () => {
+    if (userData?.user_type !== 1) return;
+    const payload: any = {};
+    if (elderlyEditName.trim()) payload.name = elderlyEditName.trim();
+    if (elderlyEditAge.trim()) {
+      const ageNum = parseInt(elderlyEditAge.trim(), 10);
+      if (!isNaN(ageNum)) payload.age = ageNum;
+    }
+    if (elderlyEditHealth.trim()) payload.health_level = elderlyEditHealth.trim();
+    if (elderlyEditEmergency.trim()) payload.emergency_contact = elderlyEditEmergency.trim();
+    if (elderlyEditAddress.trim()) payload.address = elderlyEditAddress.trim();
+    if (Object.keys(payload).length === 0) {
+      message.info('未修改任何老人资料');
+      return;
+    }
+    try {
+      setElderlySaving(true);
+      const resp = await api.patch('/elders/me', payload);
+      setElderlyDetail(resp.data as Elderly);
+      message.success('老人资料更新成功');
+      setElderlyEditName('');
+      setElderlyEditAge('');
+      setElderlyEditHealth('');
+      setElderlyEditEmergency('');
+      setElderlyEditAddress('');
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        message.error(err.response?.data?.detail || '老人资料更新失败');
+      } else {
+        message.error('老人资料更新失败');
+      }
+    } finally {
+      setElderlySaving(false);
+    }
+  };
+
+  const handleSaveFamilyProfile = async () => {
+    if (userData?.user_type !== 2) return;
+    const payload: any = {};
+    if (familyEditName.trim()) payload.name = familyEditName.trim();
+    if (familyEditRelation.trim()) payload.relation = familyEditRelation.trim();
+    if (familyEditPerm.trim()) payload.permission_level = familyEditPerm.trim();
+    if (Object.keys(payload).length === 0 && !newPhone.trim()) {
+      message.info('未修改任何家属资料');
+      return;
+    }
+    try {
+      setFamilySaving(true);
+      if (Object.keys(payload).length > 0) {
+        const resp = await api.patch('/families/me', payload);
+        setFamilyDetail(resp.data as FamilyMember);
+      }
+      if (newPhone.trim()) {
+        const p = await api.patch('/auth/profile', { phone: newPhone.trim() });
+        setUserData((prev) => (prev ? { ...prev, phone: p.data?.phone ?? newPhone.trim() } : prev));
+      }
+      message.success('家属资料更新成功');
+      setFamilyEditName('');
+      setFamilyEditRelation('');
+      setFamilyEditPerm('');
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        message.error(err.response?.data?.detail || '家属资料更新失败');
+      } else {
+        message.error('家属资料更新失败');
+      }
+    } finally {
+      setFamilySaving(false);
+    }
+  };
+
+  const handleSaveProviderProfile = async () => {
+    if (userData?.user_type !== 3) return;
+    const payload: any = {};
+    if (providerEditName.trim()) payload.name = providerEditName.trim();
+    if (providerEditType.trim()) payload.service_type = providerEditType.trim();
+    if (providerEditNature.trim()) payload.service_nature = providerEditNature.trim();
+    if (providerEditContact.trim()) payload.contact = providerEditContact.trim();
+    if (providerEditCommunity.trim()) payload.belong_community = providerEditCommunity.trim();
+    if (Object.keys(payload).length === 0) {
+      message.info('未修改任何服务商资料');
+      return;
+    }
+    try {
+      setProviderSaving(true);
+      const resp = await api.patch('/providers/me', payload);
+      setProviderDetail(resp.data as Provider);
+      message.success('服务商资料更新成功');
+      setProviderEditName('');
+      setProviderEditType('');
+      setProviderEditNature('');
+      setProviderEditContact('');
+      setProviderEditCommunity('');
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        message.error(err.response?.data?.detail || '服务商资料更新失败');
+      } else {
+        message.error('服务商资料更新失败');
+      }
+    } finally {
+      setProviderSaving(false);
+    }
   };
 
   // ========== 渲染AI内容 ==========
@@ -1464,6 +1632,101 @@ const Profile = () => {
                   </div>
                 </div>
               )}
+
+              {userData.user_type === 1 && (
+                <div className="mt-6 border-t pt-4">
+                  <h3 className="text-lg font-semibold mb-2">编辑老人资料</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center">
+                      <span className="w-32 text-gray-600">姓名：</span>
+                      <input className="border p-2 rounded w-full" value={elderlyEditName} onChange={(e) => setElderlyEditName(e.target.value)} placeholder={elderlyDetail?.name || '未填写'} />
+                    </div>
+                    <div className="flex items-center">
+                      <span className="w-32 text-gray-600">年龄：</span>
+                      <input className="border p-2 rounded w-full" value={elderlyEditAge} onChange={(e) => setElderlyEditAge(e.target.value)} placeholder={elderlyDetail?.age?.toString() || ''} />
+                    </div>
+                    <div className="flex items-center">
+                      <span className="w-32 text-gray-600">健康等级：</span>
+                      <input className="border p-2 rounded w-full" value={elderlyEditHealth} onChange={(e) => setElderlyEditHealth(e.target.value)} placeholder={elderlyDetail?.health_level || '未填写'} />
+                    </div>
+                    <div className="flex items-center">
+                      <span className="w-32 text-gray-600">紧急联系人：</span>
+                      <input className="border p-2 rounded w-full" value={elderlyEditEmergency} onChange={(e) => setElderlyEditEmergency(e.target.value)} placeholder={elderlyDetail?.emergency_contact || '未填写'} />
+                    </div>
+                    <div className="flex items-center col-span-2">
+                      <span className="w-32 text-gray-600">居住地址：</span>
+                      <input className="border p-2 rounded w-full" value={elderlyEditAddress} onChange={(e) => setElderlyEditAddress(e.target.value)} placeholder={elderlyDetail?.address || '未填写'} />
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <button onClick={handleSaveElderlyProfile} disabled={elderlySaving} className="px-4 py-2 bg-[#1E90FF] text-white rounded hover:bg-[#187bcd]">
+                      {elderlySaving ? '保存中...' : '保存老人资料'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {userData.user_type === 2 && (
+                <div className="mt-6 border-t pt-4">
+                  <h3 className="text-lg font-semibold mb-2">编辑家属资料</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center">
+                      <span className="w-32 text-gray-600">昵称：</span>
+                      <input className="border p-2 rounded w-full" value={familyEditName} onChange={(e) => setFamilyEditName(e.target.value)} placeholder={familyDetail?.name || '未填写'} />
+                    </div>
+                    <div className="flex items-center">
+                      <span className="w-32 text-gray-600">关系：</span>
+                      <input className="border p-2 rounded w-full" value={familyEditRelation} onChange={(e) => setFamilyEditRelation(e.target.value)} placeholder={familyDetail?.relation || '子女/配偶等'} />
+                    </div>
+                    <div className="flex items-center">
+                      <span className="w-32 text-gray-600">权限：</span>
+                      <input className="border p-2 rounded w-full" value={familyEditPerm} onChange={(e) => setFamilyEditPerm(e.target.value)} placeholder={familyDetail?.permission_level || 'view/manage'} />
+                    </div>
+                    <div className="flex items-center">
+                      <span className="w-32 text-gray-600">手机号：</span>
+                      <input className="border p-2 rounded w-full" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder={userData?.phone || ''} />
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <button onClick={handleSaveFamilyProfile} disabled={familySaving} className="px-4 py-2 bg-[#1E90FF] text-white rounded hover:bg-[#187bcd]">
+                      {familySaving ? '保存中...' : '保存家属资料'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {userData.user_type === 3 && (
+                <div className="mt-6 border-t pt-4">
+                  <h3 className="text-lg font-semibold mb-2">编辑服务商资料</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex items-center">
+                      <span className="w-32 text-gray-600">名称：</span>
+                      <input className="border p-2 rounded w-full" value={providerEditName} onChange={(e) => setProviderEditName(e.target.value)} placeholder={providerDetail?.name || '未填写'} />
+                    </div>
+                    <div className="flex items-center">
+                      <span className="w-32 text-gray-600">服务类型：</span>
+                      <input className="border p-2 rounded w-full" value={providerEditType} onChange={(e) => setProviderEditType(e.target.value)} placeholder={providerDetail?.service_type || ''} />
+                    </div>
+                    <div className="flex items-center">
+                      <span className="w-32 text-gray-600">服务性质：</span>
+                      <input className="border p-2 rounded w-full" value={providerEditNature} onChange={(e) => setProviderEditNature(e.target.value)} placeholder={providerDetail?.service_nature || ''} />
+                    </div>
+                    <div className="flex items-center">
+                      <span className="w-32 text-gray-600">联系人：</span>
+                      <input className="border p-2 rounded w-full" value={providerEditContact} onChange={(e) => setProviderEditContact(e.target.value)} placeholder={providerDetail?.contact || ''} />
+                    </div>
+                    <div className="flex items-center">
+                      <span className="w-32 text-gray-600">所属社区：</span>
+                      <input className="border p-2 rounded w-full" value={providerEditCommunity} onChange={(e) => setProviderEditCommunity(e.target.value)} placeholder={providerDetail?.belong_community || ''} />
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <button onClick={handleSaveProviderProfile} disabled={providerSaving} className="px-4 py-2 bg-[#1E90FF] text-white rounded hover:bg-[#187bcd]">
+                      {providerSaving ? '保存中...' : '保存服务商资料'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );
@@ -1516,34 +1779,34 @@ const Profile = () => {
                         <td className="p-3 border border-gray-200">
                           <span
                             className={`px-2 py-1 rounded text-sm font-medium ${
-                              order.order_status === '已完成'
+                              order.order_status === 'finished'
                                 ? 'bg-green-100 text-green-600'
-                                : order.order_status === '待确认'
+                                : order.order_status === 'created'
                                   ? 'bg-blue-100 text-blue-600'
-                                  : order.order_status === '已确认'
+                                  : order.order_status === 'confirmed'
                                     ? 'bg-yellow-100 text-yellow-600'
                                     : 'bg-gray-100 text-gray-600'
                             }`}
                           >
-                            {order.order_status || '未知'}
+                            {orderStatusLabel(order.order_status)}
                           </span>
                         </td>
                         <td className="p-3 border border-gray-200">
                           <span
                             className={`px-2 py-1 rounded text-sm font-medium ${
-                              order.pay_status === '已支付'
+                              order.pay_status === 'paid'
                                 ? 'bg-green-100 text-green-600'
-                                : order.pay_status === '未支付'
+                                : order.pay_status === 'unpaid'
                                   ? 'bg-red-100 text-red-600'
                                   : 'bg-gray-100 text-gray-600'
                             }`}
                           >
-                            {order.pay_status || '未知'}
+                            {payStatusLabel(order.pay_status)}
                           </span>
                         </td>
                         <td className="p-3 border border-gray-200">
                           <div className="flex gap-2 justify-center">
-                            {order.order_status === '待确认' && (
+                            {order.order_status === 'created' && (
                               <button
                                 onClick={() => order.order_id && handleConfirmOrder(order.order_id)}
                                 className="px-3 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
@@ -1551,7 +1814,7 @@ const Profile = () => {
                                 确认
                               </button>
                             )}
-                            {order.order_status === '已确认' && (
+                            {order.order_status === 'confirmed' && (
                               <button
                                 onClick={() =>
                                   order.order_id && handleCompleteOrder(order.order_id)
@@ -1561,7 +1824,15 @@ const Profile = () => {
                                 完成
                               </button>
                             )}
-                            {order.order_status === '已完成' && (
+                            {order.pay_status === 'unpaid' && (
+                              <button
+                                onClick={() => order.order_id && handlePayOrder(order.order_id)}
+                                className="px-3 py-1 text-xs bg-purple-500 text-white rounded hover:bg-purple-600"
+                              >
+                                支付
+                              </button>
+                            )}
+                            {order.order_status === 'finished' && (
                               <button
                                 onClick={() => {
                                   const score = prompt('请输入评分 (1-5):', '5');
@@ -2040,7 +2311,7 @@ const Profile = () => {
                       >
                         <option value="">-- 选择老人 --</option>
                         {availableElders.map((elderly) => (
-                          <option key={elderly.id} value={elderly.id}>
+                          <option key={elderly.user_id} value={elderly.user_id}>
                             {elderly.name}
                           </option>
                         ))}
@@ -2207,10 +2478,10 @@ const Profile = () => {
                       <tbody>
                         {monitorElderlyList.map((elderly) => (
                           <tr
-                            key={elderly.id}
+                            key={elderly.user_id}
                             className="border-b border-gray-200 hover:bg-gray-50"
                           >
-                            <td className="p-3 border border-gray-200">{elderly.id}</td>
+                            <td className="p-3 border border-gray-200">{elderly.user_id}</td>
                             <td className="p-3 border border-gray-200">{elderly.name}</td>
                             <td className="p-3 border border-gray-200">{elderly.id_card}</td>
                             <td className="p-3 border border-gray-200">{elderly.health_level}</td>

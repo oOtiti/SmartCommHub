@@ -34,6 +34,14 @@ class FamilyMemberCreateReq(BaseModel):
     elderly_id: int | None = None
 
 
+class FamilyMemberUpdateReq(BaseModel):
+    name: str | None = None
+    phone: str | None = None
+    relation: str | None = None
+    permission_level: str | None = None
+    elderly_id: int | None = None
+
+
 @router.post("/members", status_code=status.HTTP_201_CREATED)
 def create_family_member(
     req: FamilyMemberCreateReq,
@@ -82,7 +90,17 @@ def list_elders_by_account(
     if cur_uid is None:
         return {"items": []}
     fm = family_member_dao.get_by_user_id(db, int(cur_uid))
+    # 若未绑定家属实体，且为老人账户，则返回其本人
     if not fm:
+        try:
+            from app.dao.elderly_dao import elderly_dao
+            # 仅老人用户有此回退意义
+            if getattr(current, "user_type", None) == 1:
+                me = elderly_dao.get_by_user_id(db, int(cur_uid))
+                if me:
+                    return {"items": [me]}
+        except Exception:
+            pass
         return {"items": []}
     elder_ids = family_group_service.elders_by_family_id(db, int(fm.family_id))
     # 回退：如果未配置家庭分组映射，且该家属实体存在 legacy 的 elderly_id，则返回该老人
@@ -108,3 +126,29 @@ def get_my_family_member(
         from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="当前账户未绑定家属信息")
     return FamilyMemberOut.model_validate(fm)
+
+
+@router.patch("/me", response_model=FamilyMemberOut)
+def update_my_family_member(
+    req: FamilyMemberUpdateReq,
+    db: Session = Depends(get_db),
+    current=Depends(get_current_user),
+):
+    cur_uid = getattr(current, "user_id", None)
+    if cur_uid is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="未登录或账户异常")
+    fm = family_member_dao.get_by_user_id(db, int(cur_uid))
+    if not fm:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="当前账户未绑定家属信息")
+    from app.utils.audit import audit_log
+    data = req.model_dump(exclude_unset=True)
+    rows = family_member_dao.update_fields(db, int(fm.family_id), data)
+    if rows:
+        db.commit()
+        audit_log(db, int(cur_uid), "update", "family_member", int(fm.family_id), data)
+        updated = family_member_dao.get(db, int(fm.family_id))
+        return FamilyMemberOut.model_validate(updated)
+    from fastapi import HTTPException
+    raise HTTPException(status_code=400, detail="家属资料未更新")

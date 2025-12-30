@@ -18,6 +18,16 @@ class ServiceOrderDAO(BaseDAO[ServiceOrder]):
         stmt = stmt.offset(offset).limit(limit)
         return db.execute(stmt).scalars().all()
 
+    def list_by_elderly_ids(self, db: Session, elderly_ids: Sequence[int], status: Optional[str] = None, offset: int = 0, limit: int = 50) -> Sequence[ServiceOrder]:
+        if not elderly_ids:
+            return []
+        from sqlalchemy import func
+        stmt = select(ServiceOrder).where(ServiceOrder.elderly_id.in_(list(set(elderly_ids))))
+        if status:
+            stmt = stmt.where(ServiceOrder.order_status == status)
+        stmt = stmt.offset(offset).limit(limit)
+        return db.execute(stmt).scalars().all()
+
     def confirm(self, db: Session, order_id: int) -> int:
         # English enum per DB constraint
         stmt = update(ServiceOrder).where(ServiceOrder.order_id == order_id).values(order_status="confirmed").execution_options(synchronize_session="fetch")
@@ -35,6 +45,17 @@ class ServiceOrderDAO(BaseDAO[ServiceOrder]):
         if content is not None:
             values["eval_content"] = content
         stmt = update(ServiceOrder).where(ServiceOrder.order_id == order_id).values(**values).execution_options(synchronize_session="fetch")
+        res = db.execute(stmt)
+        return res.rowcount or 0
+
+    def pay(self, db: Session, order_id: int) -> int:
+        # set pay_status to 'paid' per DB constraint
+        stmt = (
+            update(ServiceOrder)
+            .where(ServiceOrder.order_id == order_id)
+            .values(pay_status="paid")
+            .execution_options(synchronize_session="fetch")
+        )
         res = db.execute(stmt)
         return res.rowcount or 0
 

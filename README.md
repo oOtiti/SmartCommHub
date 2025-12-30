@@ -13,7 +13,7 @@
 - 后端框架 ：[FastAPI](https://fastapi.tiangolo.com/)
 - ORM: [SQLAlchemy](https://docs.sqlalchemy.org/en/20/)
 - DB: [openGauss](https://opengauss.org/zh/)
-- 消息：[Emqx](https://www.emqx.com/zh) + WebSocket
+- 消息：[Emqx](https://www.emqx.com/zh) + [WebSocket](https://developer.aliyun.com/article/1625391)
 - 权限：[JWT](https://jwt.io/) 登录、基于用户类型的简单权限控制
 - 结构上三层：
     models：数据库实体

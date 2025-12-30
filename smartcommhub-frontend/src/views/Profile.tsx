@@ -1047,12 +1047,19 @@ const Profile = () => {
 
     try {
       setAddingRelation(true);
-      // 创建家族成员关系
+      // 创建家族成员关系（要求先绑定手机号）
+      const phone = (userData?.phone || familyDetail?.phone || '').trim();
+      if (!phone) {
+        message.error('请先在“系统设置”绑定手机号后再添加关联');
+        setAddingRelation(false);
+        return;
+      }
+      // 创建关联
       await api.post('/families/members', {
         user_id: userData?.id,
         elderly_id: selectedElderlyForAdd.elderly_id,
         name: userData?.username || '家属',
-        phone: userData?.phone || '',
+        phone,
         relation: relationInput.trim(),
         permission_level: 'view',
       });
@@ -1062,6 +1069,7 @@ const Profile = () => {
       setRelationInput('');
       // 刷新列表
       handleSearchElderly(monitorSearchKeyword, monitorPage);
+      handleGetFamilyElders();
     } catch (err) {
       if (axios.isAxiosError(err)) {
         message.error(err.response?.data?.detail || '添加老人关联失败');
@@ -1281,7 +1289,7 @@ const Profile = () => {
       const ageNum = parseInt(elderlyEditAge.trim(), 10);
       if (!isNaN(ageNum)) payload.age = ageNum;
     }
-    if (elderlyEditHealth.trim()) payload.health_level = elderlyEditHealth.trim();
+    // 健康等级不允许老人自行编辑
     if (elderlyEditEmergency.trim()) payload.emergency_contact = elderlyEditEmergency.trim();
     if (elderlyEditAddress.trim()) payload.address = elderlyEditAddress.trim();
     if (Object.keys(payload).length === 0) {
@@ -1328,6 +1336,11 @@ const Profile = () => {
       if (newPhone.trim()) {
         const p = await api.patch('/auth/profile', { phone: newPhone.trim() });
         setUserData((prev) => (prev ? { ...prev, phone: p.data?.phone ?? newPhone.trim() } : prev));
+        // 刷新一次用户信息，确保前端展示同步
+        try {
+          const refreshed = await api.get('/auth/profile');
+          setUserData(refreshed.data as UserProfile);
+        } catch {}
       }
       message.success('家属资料更新成功');
       setFamilyEditName('');
@@ -1567,7 +1580,7 @@ const Profile = () => {
                   </div>
                   <div className="flex items-center">
                     <span className="w-32 text-gray-600">手机号：</span>
-                    <span className="font-medium">{familyDetail.phone || '未绑定'}</span>
+                    <span className="font-medium">{userData.phone || familyDetail.phone || '未绑定'}</span>
                   </div>
                   <div className="flex items-center">
                     <span className="w-32 text-gray-600">与老人关系：</span>
@@ -1645,10 +1658,7 @@ const Profile = () => {
                       <span className="w-32 text-gray-600">年龄：</span>
                       <input className="border p-2 rounded w-full" value={elderlyEditAge} onChange={(e) => setElderlyEditAge(e.target.value)} placeholder={elderlyDetail?.age?.toString() || ''} />
                     </div>
-                    <div className="flex items-center">
-                      <span className="w-32 text-gray-600">健康等级：</span>
-                      <input className="border p-2 rounded w-full" value={elderlyEditHealth} onChange={(e) => setElderlyEditHealth(e.target.value)} placeholder={elderlyDetail?.health_level || '未填写'} />
-                    </div>
+                    {/* 健康等级不可编辑，保留展示在上方基本信息区 */}
                     <div className="flex items-center">
                       <span className="w-32 text-gray-600">紧急联系人：</span>
                       <input className="border p-2 rounded w-full" value={elderlyEditEmergency} onChange={(e) => setElderlyEditEmergency(e.target.value)} placeholder={elderlyDetail?.emergency_contact || '未填写'} />
